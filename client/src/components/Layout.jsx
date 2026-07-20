@@ -3,7 +3,7 @@ import { useAuth } from '../context/AuthContext';
 import Avatar from './Avatar';
 
 export default function Layout() {
-  const { user, logout, isSenior } = useAuth();
+  const { user, logout, can } = useAuth();
   const navigate = useNavigate();
 
   async function handleLogout() {
@@ -23,7 +23,9 @@ export default function Layout() {
             Developments
           </NavLink>
           <NavLink to="/my-tasks">My Tasks</NavLink>
-          {isSenior && <NavLink to="/users">Users</NavLink>}
+          {can('viewAllTasks') && <NavLink to="/all-tasks">All Tasks</NavLink>}
+          {can('manageUsers') && <NavLink to="/users">Users</NavLink>}
+          {can('manageUsers') && <NavLink to="/roles">Roles</NavLink>}
           <NavLink to="/profile">Profile</NavLink>
         </nav>
       </aside>
@@ -32,7 +34,7 @@ export default function Layout() {
           <div />
           <div className="topbar__user">
             <span className="topbar__name">{user?.name}</span>
-            <span className={`role-pill role-pill--${user?.role}`}>{user?.role}</span>
+            <span className={`role-pill role-pill--${user?.role}`}>{user?.roleLabel}</span>
             <Avatar name={user?.name} src={user?.avatarPath} size={32} />
             <button className="btn btn--ghost" onClick={handleLogout}>
               Log out

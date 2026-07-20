@@ -2,13 +2,15 @@ import { useEffect, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { api } from '../api/client';
 import { useAuth } from '../context/AuthContext';
-import { DEVELOPMENT_PHASES, TASK_PHASES, SENIOR_ONLY_TASK_PHASES } from '../constants';
+import { DEVELOPMENT_PHASES, TASK_PHASES, MANAGER_ONLY_TASK_PHASES } from '../constants';
 import PhaseBadge from '../components/PhaseBadge';
 import Avatar from '../components/Avatar';
 
 export default function DevelopmentDetail() {
   const { id } = useParams();
-  const { user, isSenior } = useAuth();
+  const { user, can } = useAuth();
+  const canManageDevelopments = can('manageDevelopments');
+  const canManageTasks = can('manageTasks');
 
   const [development, setDevelopment] = useState(null);
   const [tasks, setTasks] = useState([]);
@@ -115,7 +117,7 @@ export default function DevelopmentDetail() {
           <h1>{development.name}</h1>
           {development.description && <p className="muted">{development.description}</p>}
         </div>
-        {isSenior ? (
+        {canManageDevelopments ? (
           <select
             className="select--phase"
             value={development.phase}
@@ -136,7 +138,7 @@ export default function DevelopmentDetail() {
 
       <div className="page-header">
         <h2>Tasks</h2>
-        {isSenior && (
+        {canManageTasks && (
           <button className="btn btn--primary" onClick={() => setShowForm((v) => !v)}>
             {showForm ? 'Cancel' : 'New Task'}
           </button>
@@ -188,10 +190,10 @@ export default function DevelopmentDetail() {
       ) : (
         <div className="task-list">
           {tasks.map((task) => {
-            const canEditPhase = isSenior || task.assignedTo === user.id;
-            const phaseOptions = isSenior
+            const canEditPhase = canManageTasks || task.assignedTo === user.id;
+            const phaseOptions = canManageTasks
               ? TASK_PHASES
-              : TASK_PHASES.filter((p) => !SENIOR_ONLY_TASK_PHASES.has(p.value) || p.value === task.phase);
+              : TASK_PHASES.filter((p) => !MANAGER_ONLY_TASK_PHASES.has(p.value) || p.value === task.phase);
 
             return (
               <div className="task-row" key={task.id}>
@@ -201,7 +203,7 @@ export default function DevelopmentDetail() {
                 </div>
 
                 <div className="task-row__assignee">
-                  {isSenior ? (
+                  {canManageTasks ? (
                     <select
                       value={task.assignedTo || ''}
                       onChange={(e) => handleAssigneeChange(task, e.target.value)}
@@ -238,9 +240,15 @@ export default function DevelopmentDetail() {
                   ) : (
                     <PhaseBadge phase={task.phase} list={TASK_PHASES} />
                   )}
+                  {task.validatedByName && (
+                    <div className="validated-note">
+                      Validated by {task.validatedByName} on{' '}
+                      {new Date(task.validatedAt).toLocaleDateString()}
+                    </div>
+                  )}
                 </div>
 
-                {isSenior && (
+                {canManageTasks && (
                   <button className="btn btn--ghost btn--danger" onClick={() => handleDeleteTask(task.id)}>
                     Delete
                   </button>

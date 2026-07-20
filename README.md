@@ -1,17 +1,40 @@
 # DevFlow
 
-Internal task management app for the engineering team. Seniors create developer
+Internal task management app for the engineering team. Managers create developer
 accounts and assign tasks; developers track their work through its phases.
 
 - **Developments** move through: Waiting List → In Search → In Development → In Production
 - **Tasks** (belong to a development, optionally assigned to a user) move through:
-  Not Started → In Progress → In Validation → Approved → Done
-- Only a **senior** can create users, create/edit developments, create tasks, and
-  reassign tasks. A senior is also the only one who can move a task to
-  **Approved** or **Done** (the assigned developer can move it through
-  Not Started / In Progress / In Validation).
+  Not Started → In Progress → In Validation → Approved → Done. Moving a task into
+  **Approved** or **Done** stamps who validated it and when (shown on the task).
+- Every task/development board is also viewable as a Notion-style **drag-and-drop
+  Kanban board**, in addition to the plain list view.
 - Login is email + password. Only `@pkf.pt` addresses are accepted.
-- There is no public sign-up — accounts are created from inside the app (Users page, senior only).
+- There is no public sign-up — accounts are created from inside the app (Users page).
+
+## Roles & permissions
+
+Four roles ship by default — **Senior**, **Admin**, **Partner**, **Developer** —
+each with four independent permission flags:
+
+| Role      | Manage users | Manage developments | Manage tasks | View all tasks |
+|-----------|:---:|:---:|:---:|:---:|
+| Senior    | ✅ | ✅ | ✅ | ✅ |
+| Admin     | ✅ | ✅ | ✅ | ✅ |
+| Partner   |    | ✅ | | ✅ (read-only) |
+| Developer |    | | | |
+
+- **Manage users**: create/remove users (the only accounts that can create new users).
+- **Manage developments**: create/edit developments and their phase.
+- **Manage tasks**: create tasks, assign/reassign them, edit any field, and move a
+  task into Approved/Done. A developer can still move their own assigned tasks
+  through Not Started → In Progress → In Validation.
+- **View all tasks**: access the "All Tasks" board across every development. Only
+  a role with **Manage tasks** can drag cards there — everyone else sees it read-only.
+
+Role **labels** and **permission flags** are editable at runtime from the
+in-app **Roles** page (visible to anyone with Manage users) — the four role
+keys themselves are fixed, but what each is called and what it can do is not.
 
 ## Stack
 
@@ -50,7 +73,9 @@ npm install
 npm run db:init
 ```
 
-Re-running `db:init` is safe: it only (re)applies the schema and only creates the
+Re-running `db:init` is safe: every statement in `schema.sql` is idempotent, so
+it also upgrades an existing installation in place (adding the `roles` table,
+new columns, etc.) without touching your existing data, and only creates the
 bootstrap user if the `users` table is empty.
 
 ## 2. Run the API

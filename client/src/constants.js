@@ -13,7 +13,7 @@ export const TASK_PHASES = [
   { value: 'done', label: 'Done' },
 ];
 
-export const SENIOR_ONLY_TASK_PHASES = new Set(['approved', 'done']);
+export const MANAGER_ONLY_TASK_PHASES = new Set(['approved', 'done']);
 
 export function labelFor(list, value) {
   return list.find((item) => item.value === value)?.label ?? value;

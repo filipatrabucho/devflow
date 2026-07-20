@@ -1,18 +1,29 @@
 import { Router } from 'express';
 import pool from '../db.js';
-import { requireAuth, requireRole } from '../middleware/auth.js';
-import { TASK_FIELDS } from './developments.js';
+import { requireAuth } from '../middleware/auth.js';
+import { requirePermission, getPermissionsFor } from '../permissions.js';
+import { TASK_FIELDS, TASK_JOINS } from './developments.js';
 import { TASK_PHASES } from '../utils/validators.js';
 
 const router = Router();
 
 const DEVELOPER_ALLOWED_PHASES = new Set(['not_started', 'in_progress', 'in_validation']);
+const VALIDATED_PHASES = new Set(['approved', 'done']);
+
+router.get('/', requireAuth, requirePermission('viewAllTasks'), async (_req, res) => {
+  const [rows] = await pool.query(
+    `SELECT ${TASK_FIELDS}, d.name AS developmentName FROM tasks t
+     ${TASK_JOINS}
+     LEFT JOIN developments d ON d.id = t.development_id
+     ORDER BY t.updated_at DESC`
+  );
+  res.json({ tasks: rows });
+});
 
 router.get('/mine', requireAuth, async (req, res) => {
   const [rows] = await pool.execute(
     `SELECT ${TASK_FIELDS}, d.name AS developmentName FROM tasks t
-     LEFT JOIN users au ON au.id = t.assigned_to
-     LEFT JOIN users cu ON cu.id = t.created_by
+     ${TASK_JOINS}
      LEFT JOIN developments d ON d.id = t.development_id
      WHERE t.assigned_to = ?
      ORDER BY t.updated_at DESC`,
@@ -29,16 +40,24 @@ router.put('/:id', requireAuth, async (req, res) => {
   const task = rows[0];
   if (!task) return res.status(404).json({ error: 'Task not found' });
 
-  const isSenior = req.user.role === 'senior';
+  const permissions = await getPermissionsFor(req.user.role);
+  const canManage = permissions.manageTasks;
   const isAssignee = task.assigned_to === req.user.id;
-  if (!isSenior && !isAssignee) {
+  if (!canManage && !isAssignee) {
     return res.status(403).json({ error: 'You can only update tasks assigned to you' });
   }
 
   const { title, description, assignedTo, phase } = req.body || {};
-  let { title: nextTitle, description: nextDescription, assigned_to: nextAssignee, phase: nextPhase } = task;
+  let {
+    title: nextTitle,
+    description: nextDescription,
+    assigned_to: nextAssignee,
+    phase: nextPhase,
+    validated_by: nextValidatedBy,
+    validated_at: nextValidatedAt,
+  } = task;
 
-  if (isSenior) {
+  if (canManage) {
     if (title !== undefined) {
       if (typeof title !== 'string' || title.trim().length < 2) {
         return res.status(400).json({ error: 'Title must be at least 2 characters' });
@@ -59,35 +78,41 @@ router.put('/:id', requireAuth, async (req, res) => {
       }
     }
   } else if (assignedTo !== undefined || title !== undefined || description !== undefined) {
-    return res.status(403).json({ error: 'Only a senior can edit task details or reassign' });
+    return res.status(403).json({ error: 'Only a manager can edit task details or reassign' });
   }
 
   if (phase !== undefined) {
     if (!TASK_PHASES.includes(phase)) {
       return res.status(400).json({ error: 'Invalid phase' });
     }
-    if (!isSenior && !DEVELOPER_ALLOWED_PHASES.has(phase)) {
-      return res.status(403).json({ error: 'Only a senior can approve or complete a task' });
+    if (!canManage && !DEVELOPER_ALLOWED_PHASES.has(phase)) {
+      return res.status(403).json({ error: 'Only a manager can approve or complete a task' });
     }
     nextPhase = phase;
+
+    if (VALIDATED_PHASES.has(phase) && !VALIDATED_PHASES.has(task.phase)) {
+      nextValidatedBy = req.user.id;
+      nextValidatedAt = new Date();
+    } else if (!VALIDATED_PHASES.has(phase)) {
+      nextValidatedBy = null;
+      nextValidatedAt = null;
+    }
   }
 
   await pool.execute(
-    'UPDATE tasks SET title = ?, description = ?, assigned_to = ?, phase = ? WHERE id = ?',
-    [nextTitle, nextDescription, nextAssignee, nextPhase, id]
+    `UPDATE tasks SET title = ?, description = ?, assigned_to = ?, phase = ?,
+       validated_by = ?, validated_at = ? WHERE id = ?`,
+    [nextTitle, nextDescription, nextAssignee, nextPhase, nextValidatedBy, nextValidatedAt, id]
   );
 
   const [updatedRows] = await pool.execute(
-    `SELECT ${TASK_FIELDS} FROM tasks t
-     LEFT JOIN users au ON au.id = t.assigned_to
-     LEFT JOIN users cu ON cu.id = t.created_by
-     WHERE t.id = ?`,
+    `SELECT ${TASK_FIELDS} FROM tasks t ${TASK_JOINS} WHERE t.id = ?`,
     [id]
   );
   res.json({ task: updatedRows[0] });
 });
 
-router.delete('/:id', requireAuth, requireRole('senior'), async (req, res) => {
+router.delete('/:id', requireAuth, requirePermission('manageTasks'), async (req, res) => {
   const id = Number(req.params.id);
   if (!Number.isInteger(id)) return res.status(400).json({ error: 'Invalid task id' });
 

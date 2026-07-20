@@ -3,6 +3,7 @@ import bcrypt from 'bcryptjs';
 import rateLimit from 'express-rate-limit';
 import pool from '../db.js';
 import { signToken, setAuthCookie, clearAuthCookie, requireAuth } from '../middleware/auth.js';
+import { getPermissionsFor, getRoleByKey } from '../permissions.js';
 import { isValidCompanyEmail, normalizeEmail } from '../utils/validators.js';
 
 const router = Router();
@@ -14,6 +15,19 @@ const loginLimiter = rateLimit({
   legacyHeaders: false,
   message: { error: 'Too many login attempts. Please try again later.' },
 });
+
+async function toPublicUser(user) {
+  const role = await getRoleByKey(user.role);
+  return {
+    id: user.id,
+    name: user.name,
+    email: user.email,
+    role: user.role,
+    roleLabel: role?.label || user.role,
+    avatarPath: user.avatar_path,
+    permissions: role?.permissions || (await getPermissionsFor(user.role)),
+  };
+}
 
 router.post('/login', loginLimiter, async (req, res) => {
   const { email, password } = req.body || {};
@@ -41,15 +55,7 @@ router.post('/login', loginLimiter, async (req, res) => {
   const token = signToken(user);
   setAuthCookie(res, token);
 
-  res.json({
-    user: {
-      id: user.id,
-      name: user.name,
-      email: user.email,
-      role: user.role,
-      avatarPath: user.avatar_path,
-    },
-  });
+  res.json({ user: await toPublicUser(user) });
 });
 
 router.post('/logout', (_req, res) => {
@@ -66,15 +72,7 @@ router.get('/me', requireAuth, async (req, res) => {
   if (!user) {
     return res.status(401).json({ error: 'Not authenticated' });
   }
-  res.json({
-    user: {
-      id: user.id,
-      name: user.name,
-      email: user.email,
-      role: user.role,
-      avatarPath: user.avatar_path,
-    },
-  });
+  res.json({ user: await toPublicUser(user) });
 });
 
 export default router;

@@ -6,6 +6,7 @@ const emptyForm = { name: '', email: '', password: '', role: 'developer' };
 
 export default function Users() {
   const [users, setUsers] = useState([]);
+  const [roles, setRoles] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
@@ -16,8 +17,9 @@ export default function Users() {
   async function load() {
     setLoading(true);
     try {
-      const data = await api.get('/users');
-      setUsers(data.users);
+      const [userData, roleData] = await Promise.all([api.get('/users'), api.get('/roles')]);
+      setUsers(userData.users);
+      setRoles(roleData.roles);
     } catch (err) {
       setError(err.message);
     } finally {
@@ -115,8 +117,11 @@ export default function Users() {
           <label className="field">
             <span>Role</span>
             <select value={form.role} onChange={(e) => setForm({ ...form, role: e.target.value })}>
-              <option value="developer">Developer</option>
-              <option value="senior">Senior</option>
+              {roles.map((r) => (
+                <option key={r.key} value={r.key}>
+                  {r.label}
+                </option>
+              ))}
             </select>
           </label>
           <button className="btn btn--primary" type="submit" disabled={saving}>
@@ -147,7 +152,7 @@ export default function Users() {
                 <td>{u.name}</td>
                 <td>{u.email}</td>
                 <td>
-                  <span className={`role-pill role-pill--${u.role}`}>{u.role}</span>
+                  <span className={`role-pill role-pill--${u.role}`}>{u.roleLabel}</span>
                 </td>
                 <td>
                   <button className="btn btn--ghost btn--danger" onClick={() => handleDelete(u.id)}>

@@ -6,7 +6,7 @@ import { DEVELOPMENT_PHASES } from '../constants';
 import PhaseBadge from '../components/PhaseBadge';
 
 export default function Developments() {
-  const { isSenior } = useAuth();
+  const { can } = useAuth();
   const [developments, setDevelopments] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -50,7 +50,7 @@ export default function Developments() {
     <div>
       <div className="page-header">
         <h1>Developments</h1>
-        {isSenior && (
+        {can('manageDevelopments') && (
           <button className="btn btn--primary" onClick={() => setShowForm((v) => !v)}>
             {showForm ? 'Cancel' : 'New Development'}
           </button>

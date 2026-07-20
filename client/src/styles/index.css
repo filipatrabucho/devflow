@@ -203,8 +203,7 @@ p {
 }
 
 .field input,
-.field textarea,
-.field select {
+.field textarea {
   font: inherit;
   padding: 9px 11px;
   border: 1px solid var(--color-border);
@@ -213,9 +212,32 @@ p {
   color: var(--color-text);
 }
 
+/* Every <select> in the app shares this look, regardless of where it's used
+   (task rows, tables, forms) - the browser can't be styled otherwise. */
+select {
+  font: inherit;
+  font-size: 0.88rem;
+  font-weight: 500;
+  padding: 8px 32px 8px 12px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  background-color: #fff;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 20' fill='%236b7280'%3E%3Cpath fill-rule='evenodd' d='M5.23 7.21a.75.75 0 011.06.02L10 11.168l3.71-3.938a.75.75 0 111.08 1.04l-4.25 4.5a.75.75 0 01-1.08 0l-4.25-4.5a.75.75 0 01.02-1.06z' clip-rule='evenodd'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 10px center;
+  background-size: 14px;
+  color: var(--color-text);
+  appearance: none;
+  cursor: pointer;
+  transition: border-color 0.15s ease;
+}
+
+select:hover {
+  border-color: var(--color-primary);
+}
+
 .field input:focus,
 .field textarea:focus,
-.field select:focus,
 select:focus {
   outline: 2px solid var(--color-primary);
   outline-offset: 1px;
@@ -400,8 +422,13 @@ select:focus {
   padding: 3px 10px;
   border-radius: 999px;
 }
-.role-pill--senior {
+.role-pill--senior,
+.role-pill--admin {
   background: #2a1b70;
+  color: #fff;
+}
+.role-pill--partner {
+  background: #0d5c63;
   color: #fff;
 }
 .role-pill--developer {
@@ -461,6 +488,126 @@ select:focus {
   font-size: 0.85rem;
 }
 
+.validated-note {
+  font-size: 0.78rem;
+  color: var(--color-success);
+  margin-top: 4px;
+}
+
+/* View toggle */
+.view-toggle {
+  display: inline-flex;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  overflow: hidden;
+}
+.view-toggle button {
+  font: inherit;
+  font-weight: 600;
+  font-size: 0.85rem;
+  padding: 7px 14px;
+  border: none;
+  background: #fff;
+  color: var(--color-muted);
+  cursor: pointer;
+}
+.view-toggle button + button {
+  border-left: 1px solid var(--color-border);
+}
+.view-toggle button.active {
+  background: var(--color-primary);
+  color: #fff;
+}
+
+/* Kanban board */
+.kanban {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(220px, 1fr));
+  gap: 14px;
+  overflow-x: auto;
+  padding-bottom: 8px;
+}
+
+.kanban__column {
+  background: #eef0f4;
+  border-radius: 10px;
+  padding: 10px;
+  min-width: 220px;
+  min-height: 120px;
+  border: 2px solid transparent;
+  transition: border-color 0.12s ease, background 0.12s ease;
+}
+.kanban__column--over {
+  border-color: var(--color-primary);
+  background: #e4eaff;
+}
+
+.kanban__column-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 0.78rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  color: var(--color-muted);
+  padding: 4px 6px 10px;
+}
+
+.kanban__count {
+  background: #dfe2e8;
+  border-radius: 999px;
+  padding: 1px 8px;
+  font-weight: 700;
+}
+
+.kanban__column-body {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.kanban__empty {
+  color: var(--color-muted);
+  font-size: 0.8rem;
+  padding: 10px 6px;
+  text-align: center;
+}
+
+.kanban__card {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  padding: 10px 12px;
+  box-shadow: var(--shadow-sm);
+}
+.kanban__card--draggable {
+  cursor: grab;
+}
+.kanban__card--draggable:active {
+  cursor: grabbing;
+}
+
+.kanban__card-title {
+  font-weight: 600;
+  font-size: 0.9rem;
+  margin-bottom: 6px;
+}
+
+.kanban__card-meta {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.kanban__card-dev {
+  font-size: 0.78rem;
+  color: var(--color-muted);
+  margin-bottom: 4px;
+}
+
 /* Table */
 .table {
   width: 100%;
@@ -488,12 +635,24 @@ select:focus {
   border-bottom: none;
 }
 
-.select--phase {
+.table input[type='text'] {
   font: inherit;
-  font-weight: 600;
-  padding: 7px 10px;
-  border-radius: var(--radius);
+  padding: 6px 9px;
   border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  width: 100%;
+  max-width: 180px;
+}
+
+.table input[type='checkbox'] {
+  width: 18px;
+  height: 18px;
+  cursor: pointer;
+  accent-color: var(--color-primary);
+}
+
+.select--phase {
+  font-weight: 700;
 }
 
 /* Alerts */

@@ -3,6 +3,13 @@ import { api } from '../api/client';
 
 const AuthContext = createContext(null);
 
+const NO_PERMISSIONS = {
+  manageUsers: false,
+  manageDevelopments: false,
+  manageTasks: false,
+  viewAllTasks: false,
+};
+
 export function AuthProvider({ children }) {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -33,9 +40,20 @@ export function AuthProvider({ children }) {
     setUser(null);
   }, []);
 
+  const permissions = user?.permissions || NO_PERMISSIONS;
+
   const value = useMemo(
-    () => ({ user, setUser, loading, login, logout, refresh, isSenior: user?.role === 'senior' }),
-    [user, loading, login, logout, refresh]
+    () => ({
+      user,
+      setUser,
+      loading,
+      login,
+      logout,
+      refresh,
+      permissions,
+      can: (permission) => !!permissions[permission],
+    }),
+    [user, loading, login, logout, refresh, permissions]
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

@@ -6,7 +6,9 @@ import Login from './pages/Login';
 import Developments from './pages/Developments';
 import DevelopmentDetail from './pages/DevelopmentDetail';
 import MyTasks from './pages/MyTasks';
+import AllTasks from './pages/AllTasks';
 import Users from './pages/Users';
+import Roles from './pages/Roles';
 import Profile from './pages/Profile';
 
 export default function App() {
@@ -22,8 +24,13 @@ export default function App() {
             <Route path="/my-tasks" element={<MyTasks />} />
             <Route path="/profile" element={<Profile />} />
 
-            <Route element={<ProtectedRoute requireSenior />}>
+            <Route element={<ProtectedRoute permission="viewAllTasks" />}>
+              <Route path="/all-tasks" element={<AllTasks />} />
+            </Route>
+
+            <Route element={<ProtectedRoute permission="manageUsers" />}>
               <Route path="/users" element={<Users />} />
+              <Route path="/roles" element={<Roles />} />
             </Route>
           </Route>
         </Route>

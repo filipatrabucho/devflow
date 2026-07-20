@@ -11,6 +11,7 @@ import authRoutes from './routes/auth.js';
 import userRoutes from './routes/users.js';
 import developmentRoutes from './routes/developments.js';
 import taskRoutes from './routes/tasks.js';
+import roleRoutes from './routes/roles.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const app = express();
@@ -42,6 +43,7 @@ app.use('/api/auth', authRoutes);
 app.use('/api/users', userRoutes);
 app.use('/api/developments', developmentRoutes);
 app.use('/api/tasks', taskRoutes);
+app.use('/api/roles', roleRoutes);
 
 app.get('/api/health', (_req, res) => res.json({ status: 'ok' }));
 

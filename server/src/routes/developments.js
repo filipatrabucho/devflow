@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import pool from '../db.js';
-import { requireAuth, requireRole } from '../middleware/auth.js';
+import { requireAuth } from '../middleware/auth.js';
+import { requirePermission } from '../permissions.js';
 import { DEVELOPMENT_PHASES } from '../utils/validators.js';
 
 const router = Router();
@@ -8,8 +9,15 @@ const router = Router();
 const TASK_FIELDS = `
   t.id, t.development_id AS developmentId, t.title, t.description, t.phase,
   t.assigned_to AS assignedTo, au.name AS assignedToName, au.avatar_path AS assignedToAvatar,
+  t.validated_by AS validatedBy, vu.name AS validatedByName, t.validated_at AS validatedAt,
   t.created_by AS createdBy, cu.name AS createdByName,
   t.created_at AS createdAt, t.updated_at AS updatedAt
+`;
+
+const TASK_JOINS = `
+  LEFT JOIN users au ON au.id = t.assigned_to
+  LEFT JOIN users vu ON vu.id = t.validated_by
+  LEFT JOIN users cu ON cu.id = t.created_by
 `;
 
 const DEV_FIELDS = `
@@ -40,7 +48,7 @@ router.get('/:id', requireAuth, async (req, res) => {
   res.json({ development: rows[0] });
 });
 
-router.post('/', requireAuth, requireRole('senior'), async (req, res) => {
+router.post('/', requireAuth, requirePermission('manageDevelopments'), async (req, res) => {
   const { name, description, phase } = req.body || {};
 
   if (typeof name !== 'string' || name.trim().length < 2 || name.trim().length > 160) {
@@ -60,7 +68,7 @@ router.post('/', requireAuth, requireRole('senior'), async (req, res) => {
   res.status(201).json({ development: rows[0] });
 });
 
-router.put('/:id', requireAuth, requireRole('senior'), async (req, res) => {
+router.put('/:id', requireAuth, requirePermission('manageDevelopments'), async (req, res) => {
   const id = Number(req.params.id);
   if (!Number.isInteger(id)) return res.status(400).json({ error: 'Invalid development id' });
 
@@ -93,7 +101,7 @@ router.put('/:id', requireAuth, requireRole('senior'), async (req, res) => {
   res.json({ development: rows[0] });
 });
 
-router.delete('/:id', requireAuth, requireRole('senior'), async (req, res) => {
+router.delete('/:id', requireAuth, requirePermission('manageDevelopments'), async (req, res) => {
   const id = Number(req.params.id);
   if (!Number.isInteger(id)) return res.status(400).json({ error: 'Invalid development id' });
 
@@ -108,8 +116,7 @@ router.get('/:id/tasks', requireAuth, async (req, res) => {
 
   const [rows] = await pool.execute(
     `SELECT ${TASK_FIELDS} FROM tasks t
-     LEFT JOIN users au ON au.id = t.assigned_to
-     LEFT JOIN users cu ON cu.id = t.created_by
+     ${TASK_JOINS}
      WHERE t.development_id = ?
      ORDER BY t.created_at ASC`,
     [developmentId]
@@ -117,7 +124,7 @@ router.get('/:id/tasks', requireAuth, async (req, res) => {
   res.json({ tasks: rows });
 });
 
-router.post('/:id/tasks', requireAuth, requireRole('senior'), async (req, res) => {
+router.post('/:id/tasks', requireAuth, requirePermission('manageTasks'), async (req, res) => {
   const developmentId = Number(req.params.id);
   if (!Number.isInteger(developmentId)) return res.status(400).json({ error: 'Invalid development id' });
 
@@ -142,14 +149,11 @@ router.post('/:id/tasks', requireAuth, requireRole('senior'), async (req, res) =
   );
 
   const [rows] = await pool.execute(
-    `SELECT ${TASK_FIELDS} FROM tasks t
-     LEFT JOIN users au ON au.id = t.assigned_to
-     LEFT JOIN users cu ON cu.id = t.created_by
-     WHERE t.id = ?`,
+    `SELECT ${TASK_FIELDS} FROM tasks t ${TASK_JOINS} WHERE t.id = ?`,
     [result.insertId]
   );
   res.status(201).json({ task: rows[0] });
 });
 
 export default router;
-export { TASK_FIELDS };
+export { TASK_FIELDS, TASK_JOINS };

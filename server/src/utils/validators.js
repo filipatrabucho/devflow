@@ -18,4 +18,3 @@ export function isStrongPassword(password) {
 
 export const DEVELOPMENT_PHASES = ['waiting_list', 'in_search', 'in_development', 'in_production'];
 export const TASK_PHASES = ['not_started', 'in_progress', 'in_validation', 'approved', 'done'];
-export const USER_ROLES = ['senior', 'developer'];

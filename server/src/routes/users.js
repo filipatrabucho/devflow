@@ -3,21 +3,25 @@ import bcrypt from 'bcryptjs';
 import fs from 'node:fs';
 import path from 'node:path';
 import pool from '../db.js';
-import { requireAuth, requireRole } from '../middleware/auth.js';
+import { requireAuth } from '../middleware/auth.js';
 import { uploadAvatar, AVATAR_DIR } from '../middleware/upload.js';
-import { isValidCompanyEmail, isStrongPassword, normalizeEmail, USER_ROLES } from '../utils/validators.js';
+import { requirePermission, getRoles } from '../permissions.js';
+import { isValidCompanyEmail, isStrongPassword, normalizeEmail } from '../utils/validators.js';
 
 const router = Router();
 
-const PUBLIC_USER_FIELDS =
-  'id, name, email, role, avatar_path AS avatarPath, created_at AS createdAt';
+const PUBLIC_USER_FIELDS = `
+  u.id, u.name, u.email, u.role, r.label AS roleLabel,
+  u.avatar_path AS avatarPath, u.created_at AS createdAt
+`;
+const USER_SELECT = `SELECT ${PUBLIC_USER_FIELDS} FROM users u LEFT JOIN roles r ON r.key_name = u.role`;
 
 router.get('/', requireAuth, async (_req, res) => {
-  const [rows] = await pool.query(`SELECT ${PUBLIC_USER_FIELDS} FROM users ORDER BY name ASC`);
+  const [rows] = await pool.query(`${USER_SELECT} ORDER BY u.name ASC`);
   res.json({ users: rows });
 });
 
-router.post('/', requireAuth, requireRole('senior'), async (req, res) => {
+router.post('/', requireAuth, requirePermission('manageUsers'), async (req, res) => {
   const { name, email, password, role } = req.body || {};
 
   if (typeof name !== 'string' || name.trim().length < 2 || name.trim().length > 120) {
@@ -29,7 +33,9 @@ router.post('/', requireAuth, requireRole('senior'), async (req, res) => {
   if (!isStrongPassword(password)) {
     return res.status(400).json({ error: 'Password must be at least 8 characters' });
   }
-  const finalRole = USER_ROLES.includes(role) ? role : 'developer';
+
+  const roles = await getRoles();
+  const finalRole = roles.some((r) => r.key === role) ? role : 'developer';
 
   const normalizedEmail = normalizeEmail(email);
   const [existing] = await pool.execute('SELECT id FROM users WHERE email = ? LIMIT 1', [normalizedEmail]);
@@ -43,7 +49,7 @@ router.post('/', requireAuth, requireRole('senior'), async (req, res) => {
     [name.trim(), normalizedEmail, passwordHash, finalRole]
   );
 
-  const [rows] = await pool.execute(`SELECT ${PUBLIC_USER_FIELDS} FROM users WHERE id = ?`, [result.insertId]);
+  const [rows] = await pool.execute(`${USER_SELECT} WHERE u.id = ?`, [result.insertId]);
   res.status(201).json({ user: rows[0] });
 });
 
@@ -91,7 +97,7 @@ router.post('/me/avatar', requireAuth, (req, res) => {
   });
 });
 
-router.delete('/:id', requireAuth, requireRole('senior'), async (req, res) => {
+router.delete('/:id', requireAuth, requirePermission('manageUsers'), async (req, res) => {
   const targetId = Number(req.params.id);
   if (!Number.isInteger(targetId)) {
     return res.status(400).json({ error: 'Invalid user id' });
@@ -100,16 +106,23 @@ router.delete('/:id', requireAuth, requireRole('senior'), async (req, res) => {
     return res.status(400).json({ error: 'You cannot delete your own account' });
   }
 
-  const [rows] = await pool.execute('SELECT role FROM users WHERE id = ? LIMIT 1', [targetId]);
-  if (!rows[0]) {
+  const [targetRows] = await pool.execute(
+    `SELECT r.can_manage_users AS canManageUsers FROM users u
+     LEFT JOIN roles r ON r.key_name = u.role WHERE u.id = ? LIMIT 1`,
+    [targetId]
+  );
+  if (!targetRows[0]) {
     return res.status(404).json({ error: 'User not found' });
   }
-  if (rows[0].role === 'senior') {
-    const [[{ seniorCount }]] = await pool.query(
-      "SELECT COUNT(*) AS seniorCount FROM users WHERE role = 'senior'"
+  if (targetRows[0].canManageUsers) {
+    const [[{ managerCount }]] = await pool.query(
+      `SELECT COUNT(*) AS managerCount FROM users u
+       JOIN roles r ON r.key_name = u.role
+       WHERE r.can_manage_users = 1 AND u.id != ?`,
+      [targetId]
     );
-    if (seniorCount <= 1) {
-      return res.status(400).json({ error: 'Cannot remove the last senior account' });
+    if (managerCount === 0) {
+      return res.status(400).json({ error: 'Cannot remove the last user who can manage users' });
     }
   }
 
