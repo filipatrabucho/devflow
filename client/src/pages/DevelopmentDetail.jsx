@@ -26,7 +26,16 @@ export default function DevelopmentDetail() {
   const [saving, setSaving] = useState(false);
 
   const [editingDev, setEditingDev] = useState(false);
-  const [devForm, setDevForm] = useState({ name: '', description: '', startDate: '' });
+  const [devForm, setDevForm] = useState({
+    name: '',
+    description: '',
+    startDate: '',
+    questions: '',
+    observations: '',
+    requestedAt: '',
+    hoursEstimate: '',
+    completionNotes: '',
+  });
   const [savingDev, setSavingDev] = useState(false);
 
   const [editingTaskId, setEditingTaskId] = useState(null);
@@ -71,6 +80,11 @@ export default function DevelopmentDetail() {
       name: development.name,
       description: development.description || '',
       startDate: development.startDate ? development.startDate.slice(0, 10) : '',
+      questions: development.questions || '',
+      observations: development.observations || '',
+      requestedAt: development.requestedAt ? development.requestedAt.slice(0, 10) : '',
+      hoursEstimate: development.hoursEstimate || '',
+      completionNotes: development.completionNotes || '',
     });
     setEditingDev(true);
   }
@@ -84,6 +98,11 @@ export default function DevelopmentDetail() {
         name: devForm.name,
         description: devForm.description,
         startDate: devForm.startDate || null,
+        questions: devForm.questions,
+        observations: devForm.observations,
+        requestedAt: devForm.requestedAt || null,
+        hoursEstimate: devForm.hoursEstimate,
+        completionNotes: devForm.completionNotes,
       });
       setDevelopment(data.development);
       setEditingDev(false);
@@ -212,6 +231,48 @@ export default function DevelopmentDetail() {
               onChange={(e) => setDevForm({ ...devForm, startDate: e.target.value })}
             />
           </label>
+          <label className="field">
+            <span>Questions</span>
+            <textarea
+              value={devForm.questions}
+              onChange={(e) => setDevForm({ ...devForm, questions: e.target.value })}
+              rows={3}
+            />
+          </label>
+          <label className="field">
+            <span>Observations</span>
+            <textarea
+              value={devForm.observations}
+              onChange={(e) => setDevForm({ ...devForm, observations: e.target.value })}
+              rows={3}
+            />
+          </label>
+          <label className="field">
+            <span>Requested date</span>
+            <input
+              type="date"
+              value={devForm.requestedAt}
+              onChange={(e) => setDevForm({ ...devForm, requestedAt: e.target.value })}
+            />
+          </label>
+          <label className="field">
+            <span>Hours estimate</span>
+            <input
+              value={devForm.hoursEstimate}
+              onChange={(e) => setDevForm({ ...devForm, hoursEstimate: e.target.value })}
+              maxLength={50}
+              placeholder="e.g. > 40h"
+            />
+          </label>
+          <label className="field">
+            <span>Completion notes</span>
+            <textarea
+              value={devForm.completionNotes}
+              onChange={(e) => setDevForm({ ...devForm, completionNotes: e.target.value })}
+              rows={2}
+              maxLength={500}
+            />
+          </label>
           <div className="table__actions">
             <button className="btn btn--primary" type="submit" disabled={savingDev}>
               {savingDev ? 'Saving...' : 'Save'}
@@ -231,7 +292,33 @@ export default function DevelopmentDetail() {
               {development.startDate && (
                 <span>Started {new Date(development.startDate).toLocaleDateString()}</span>
               )}
+              {development.requestedAt && (
+                <span>Requested {new Date(development.requestedAt).toLocaleDateString()}</span>
+              )}
+              {development.hoursEstimate && <span>Hours: {development.hoursEstimate}</span>}
             </div>
+            {(development.questions || development.observations || development.completionNotes) && (
+              <div className="dev-extra">
+                {development.questions && (
+                  <div>
+                    <span className="modal__fact-label">Questions</span>
+                    <p>{development.questions}</p>
+                  </div>
+                )}
+                {development.observations && (
+                  <div>
+                    <span className="modal__fact-label">Observations</span>
+                    <p>{development.observations}</p>
+                  </div>
+                )}
+                {development.completionNotes && (
+                  <div>
+                    <span className="modal__fact-label">Completion notes</span>
+                    <p>{development.completionNotes}</p>
+                  </div>
+                )}
+              </div>
+            )}
           </div>
           <div className="table__actions">
             {canManageDevelopments ? (

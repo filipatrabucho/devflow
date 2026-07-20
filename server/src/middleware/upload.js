@@ -30,3 +30,20 @@ export const uploadAvatar = multer({
   fileFilter,
   limits: { fileSize: 2 * 1024 * 1024, files: 1 },
 });
+
+const XLSX_MIME = new Set([
+  'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+  'application/octet-stream', // some browsers/OSes send this for .xlsx
+]);
+
+export const uploadSpreadsheet = multer({
+  storage: multer.memoryStorage(),
+  fileFilter: (_req, file, cb) => {
+    if (!XLSX_MIME.has(file.mimetype) && !file.originalname.toLowerCase().endsWith('.xlsx')) {
+      cb(new Error('Only .xlsx files are allowed'));
+      return;
+    }
+    cb(null, true);
+  },
+  limits: { fileSize: 8 * 1024 * 1024, files: 1 },
+});

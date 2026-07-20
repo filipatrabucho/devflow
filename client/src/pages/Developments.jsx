@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { api } from '../api/client';
 import { useAuth } from '../context/AuthContext';
@@ -13,6 +13,10 @@ export default function Developments() {
   const [showForm, setShowForm] = useState(false);
   const [form, setForm] = useState({ name: '', description: '', phase: 'waiting_list', startDate: '' });
   const [saving, setSaving] = useState(false);
+
+  const importInputRef = useRef(null);
+  const [importing, setImporting] = useState(false);
+  const [importResult, setImportResult] = useState(null);
 
   async function load() {
     setLoading(true);
@@ -46,18 +50,80 @@ export default function Developments() {
     }
   }
 
+  async function handleImport(e) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setError('');
+    setImportResult(null);
+    setImporting(true);
+    try {
+      const formData = new FormData();
+      formData.append('file', file);
+      const data = await api.post('/developments/import', formData, { isFormData: true });
+      setImportResult(data);
+      await load();
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setImporting(false);
+      if (importInputRef.current) importInputRef.current.value = '';
+    }
+  }
+
   return (
     <div>
       <div className="page-header">
         <h1>Developments</h1>
         {can('manageDevelopments') && (
-          <button className="btn btn--primary" onClick={() => setShowForm((v) => !v)}>
-            {showForm ? 'Cancel' : 'New Development'}
-          </button>
+          <div className="table__actions">
+            <input
+              ref={importInputRef}
+              type="file"
+              accept=".xlsx"
+              onChange={handleImport}
+              hidden
+              id="import-input"
+            />
+            <label htmlFor="import-input" className="btn btn--secondary">
+              {importing ? 'Importing...' : 'Import from Excel'}
+            </label>
+            <button className="btn btn--primary" onClick={() => setShowForm((v) => !v)}>
+              {showForm ? 'Cancel' : 'New Development'}
+            </button>
+          </div>
         )}
       </div>
 
       {error && <div className="alert alert--error">{error}</div>}
+
+      {importResult && (
+        <div className="alert alert--success import-summary">
+          <p>
+            Imported {importResult.createdCount} development(s).
+            {importResult.skipped.length > 0 && ` ${importResult.skipped.length} row(s) skipped.`}
+          </p>
+          {importResult.created.some((c) => c.warnings.length > 0) && (
+            <ul>
+              {importResult.created
+                .filter((c) => c.warnings.length > 0)
+                .map((c) => (
+                  <li key={c.row}>
+                    Row {c.row} ({c.name}): {c.warnings.join('; ')}
+                  </li>
+                ))}
+            </ul>
+          )}
+          {importResult.skipped.length > 0 && (
+            <ul>
+              {importResult.skipped.map((s) => (
+                <li key={s.row}>
+                  Row {s.row} skipped: {s.reason}
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+      )}
 
       {showForm && (
         <form className="card form" onSubmit={handleCreate}>

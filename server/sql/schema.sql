@@ -50,21 +50,33 @@ CREATE TABLE IF NOT EXISTS users (
 ALTER TABLE users MODIFY COLUMN role VARCHAR(30) NOT NULL DEFAULT 'developer';
 
 CREATE TABLE IF NOT EXISTS developments (
-  id          INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
-  name        VARCHAR(160) NOT NULL,
-  description TEXT NULL,
-  phase       ENUM('waiting_list', 'in_search', 'in_development', 'in_production')
-                NOT NULL DEFAULT 'waiting_list',
-  start_date  DATE NULL,
-  created_by  INT UNSIGNED NULL,
-  created_at  DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  updated_at  DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  id               INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+  name             VARCHAR(160) NOT NULL,
+  description      TEXT NULL,
+  phase            ENUM('waiting_list', 'in_search', 'in_development', 'in_production')
+                     NOT NULL DEFAULT 'waiting_list',
+  start_date       DATE NULL,
+  questions        TEXT NULL,
+  observations     TEXT NULL,
+  requested_at     DATE NULL,
+  hours_estimate   VARCHAR(50) NULL,
+  completion_notes VARCHAR(500) NULL,
+  created_by       INT UNSIGNED NULL,
+  created_at       DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at       DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   CONSTRAINT fk_developments_created_by
     FOREIGN KEY (created_by) REFERENCES users(id) ON DELETE SET NULL
 ) ENGINE=InnoDB;
 
 -- Upgrade path for installations created before start_date existed.
 ALTER TABLE developments ADD COLUMN IF NOT EXISTS start_date DATE NULL AFTER phase;
+
+-- Upgrade path for installations created before the Excel-import fields existed.
+ALTER TABLE developments ADD COLUMN IF NOT EXISTS questions TEXT NULL AFTER start_date;
+ALTER TABLE developments ADD COLUMN IF NOT EXISTS observations TEXT NULL AFTER questions;
+ALTER TABLE developments ADD COLUMN IF NOT EXISTS requested_at DATE NULL AFTER observations;
+ALTER TABLE developments ADD COLUMN IF NOT EXISTS hours_estimate VARCHAR(50) NULL AFTER requested_at;
+ALTER TABLE developments ADD COLUMN IF NOT EXISTS completion_notes VARCHAR(500) NULL AFTER hours_estimate;
 
 CREATE TABLE IF NOT EXISTS tasks (
   id             INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
@@ -104,11 +116,19 @@ CREATE TABLE IF NOT EXISTS task_comments (
   author_id  INT UNSIGNED NULL,
   body       TEXT NOT NULL,
   is_system  TINYINT(1) NOT NULL DEFAULT 0,
+  event_type VARCHAR(20) NULL,
+  from_phase VARCHAR(30) NULL,
+  to_phase   VARCHAR(30) NULL,
   created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
   CONSTRAINT fk_task_comments_task
     FOREIGN KEY (task_id) REFERENCES tasks(id) ON DELETE CASCADE,
   CONSTRAINT fk_task_comments_author
     FOREIGN KEY (author_id) REFERENCES users(id) ON DELETE SET NULL
 ) ENGINE=InnoDB;
+
+-- Upgrade path for installations created before phase-transition metadata existed.
+ALTER TABLE task_comments ADD COLUMN IF NOT EXISTS event_type VARCHAR(20) NULL AFTER is_system;
+ALTER TABLE task_comments ADD COLUMN IF NOT EXISTS from_phase VARCHAR(30) NULL AFTER event_type;
+ALTER TABLE task_comments ADD COLUMN IF NOT EXISTS to_phase VARCHAR(30) NULL AFTER from_phase;
 
 CREATE INDEX IF NOT EXISTS idx_task_comments_task ON task_comments(task_id);

@@ -15,9 +15,19 @@ accounts and assign tasks; developers track their work through its phases.
 - Every task/development board is also viewable as a Notion-style **drag-and-drop
   Kanban board**, in addition to the plain list view.
 - Every task has a **comment/history thread**: manual notes from anyone, plus an
-  automatic system entry every time its phase changes (who moved it, from where,
-  to where, and — if supplied — why), so a task sent backwards always has a paper
-  trail explaining the decision.
+  automatic system entry every time its phase changes — who did it, and a plain
+  label (Rejected in red, Approved/Done in green, Reopened in amber, or a generic
+  Moved) plus the optional note they gave, so a task sent backwards always has a
+  paper trail explaining the decision. Click any task card on the **All Tasks**
+  board to see its full details and comment thread in a modal.
+- **Bulk-import developments from Excel** (Manage developments): upload an
+  `.xlsx` with columns `Tema`, `Descrição`, `Questões`, `Observações`,
+  `Data Pedido`, `Horas`, `Data Conclusão`, `Estado` — one development is created
+  per row. `Estado` is matched (accent/case-insensitive) to a phase, defaulting to
+  Waiting List with a warning if it isn't recognized; unparseable dates are
+  skipped with a warning rather than failing the row. Rows without a `Tema` are
+  silently skipped. The import summary lists what was created and what warnings
+  or skips happened, per row.
 - Login is email + password. Only `@pkf.pt` addresses are accepted.
 - There is no public sign-up — accounts are created from inside the app (Users page),
   and an existing user's role can be changed at any time from the same page.

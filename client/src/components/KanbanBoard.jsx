@@ -5,7 +5,7 @@ import { useState } from 'react';
  * drag-and-drop. `canDrag`/`canDrop` gate which cards/columns respond, so the
  * same board can be read-only (no props set) or fully editable.
  */
-export default function KanbanBoard({ columns, tasks, renderCard, canDrag, canDrop, onMove }) {
+export default function KanbanBoard({ columns, tasks, renderCard, canDrag, canDrop, onMove, onCardClick }) {
   const [draggingId, setDraggingId] = useState(null);
   const [overColumn, setOverColumn] = useState(null);
 
@@ -58,10 +58,11 @@ export default function KanbanBoard({ columns, tasks, renderCard, canDrag, canDr
                 return (
                   <div
                     key={task.id}
-                    className={`kanban__card${draggable ? ' kanban__card--draggable' : ''}`}
+                    className={`kanban__card${draggable ? ' kanban__card--draggable' : ''}${onCardClick ? ' kanban__card--clickable' : ''}`}
                     draggable={draggable}
                     onDragStart={() => handleDragStart(task)}
                     onDragEnd={handleDragEnd}
+                    onClick={() => onCardClick?.(task)}
                   >
                     {renderCard(task)}
                   </div>

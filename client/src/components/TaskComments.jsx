@@ -1,6 +1,24 @@
 import { useEffect, useState } from 'react';
 import { api } from '../api/client';
 import Avatar from './Avatar';
+import { TASK_PHASES, labelFor } from '../constants';
+
+function describeEvent(c) {
+  const from = labelFor(TASK_PHASES, c.fromPhase);
+  const to = labelFor(TASK_PHASES, c.toPhase);
+  switch (c.eventType) {
+    case 'rejected':
+      return `Rejected → ${to}`;
+    case 'approved':
+      return 'Approved';
+    case 'done':
+      return 'Marked Done';
+    case 'reopened':
+      return `Reopened → ${to}`;
+    default:
+      return `Moved: ${from} → ${to}`;
+  }
+}
 
 export default function TaskComments({ taskId }) {
   const [comments, setComments] = useState([]);
@@ -54,8 +72,16 @@ export default function TaskComments({ taskId }) {
           {comments.map((c) =>
             c.isSystem ? (
               <div className="comments__system" key={c.id}>
-                <span>{c.body}</span>
-                <span className="comments__time">{new Date(c.createdAt).toLocaleString()}</span>
+                <div className="comments__system-row">
+                  <span>
+                    <strong>{c.authorName || 'Someone'}</strong>{' '}
+                    <span className={`comments__event comments__event--${c.eventType || 'moved'}`}>
+                      {describeEvent(c)}
+                    </span>
+                  </span>
+                  <span className="comments__time">{new Date(c.createdAt).toLocaleString()}</span>
+                </div>
+                {c.body && <p className="comments__system-note">{c.body}</p>}
               </div>
             ) : (
               <div className="comments__item" key={c.id}>

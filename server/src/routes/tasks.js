@@ -11,15 +11,25 @@ const DEVELOPER_ALLOWED_PHASES = new Set(['not_started', 'in_progress', 'in_vali
 const VALIDATED_PHASES = new Set(['approved', 'done']);
 
 const COMMENT_FIELDS = `
-  c.id, c.task_id AS taskId, c.body, c.is_system AS isSystem, c.created_at AS createdAt,
+  c.id, c.task_id AS taskId, c.body, c.is_system AS isSystem, c.event_type AS eventType,
+  c.from_phase AS fromPhase, c.to_phase AS toPhase, c.created_at AS createdAt,
   c.author_id AS authorId, u.name AS authorName, u.avatar_path AS authorAvatar
 `;
 
-function humanizePhase(key) {
-  return key
-    .split('_')
-    .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
-    .join(' ');
+function classifyTransition(fromPhase, toPhase) {
+  if (fromPhase === 'in_validation' && DEVELOPER_ALLOWED_PHASES.has(toPhase) && toPhase !== 'in_validation') {
+    return 'rejected';
+  }
+  if (VALIDATED_PHASES.has(fromPhase) && !VALIDATED_PHASES.has(toPhase)) {
+    return 'reopened';
+  }
+  if (!VALIDATED_PHASES.has(fromPhase) && toPhase === 'approved') {
+    return 'approved';
+  }
+  if (fromPhase !== 'done' && toPhase === 'done') {
+    return 'done';
+  }
+  return 'moved';
 }
 
 router.get('/', requireAuth, requirePermission('viewAllTasks'), async (_req, res) => {
@@ -169,11 +179,12 @@ router.put('/:id', requireAuth, async (req, res) => {
   );
 
   if (phaseChanged) {
-    const transition = `Moved from ${humanizePhase(task.phase)} to ${humanizePhase(nextPhase)}`;
-    const noteBody = comment && String(comment).trim() ? `${transition} — ${String(comment).trim()}` : transition;
+    const eventType = classifyTransition(task.phase, nextPhase);
+    const noteBody = comment && String(comment).trim() ? String(comment).trim() : '';
     await pool.execute(
-      'INSERT INTO task_comments (task_id, author_id, body, is_system) VALUES (?, ?, ?, 1)',
-      [id, req.user.id, noteBody]
+      `INSERT INTO task_comments (task_id, author_id, body, is_system, event_type, from_phase, to_phase)
+       VALUES (?, ?, ?, 1, ?, ?, ?)`,
+      [id, req.user.id, noteBody, eventType, task.phase, nextPhase]
     );
   }
 

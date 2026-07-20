@@ -1,8 +1,11 @@
 import { Router } from 'express';
+import ExcelJS from 'exceljs';
 import pool from '../db.js';
 import { requireAuth } from '../middleware/auth.js';
 import { requirePermission } from '../permissions.js';
+import { uploadSpreadsheet } from '../middleware/upload.js';
 import { DEVELOPMENT_PHASES, isValidDateString } from '../utils/validators.js';
+import { fieldForHeader, mapPhase, cellText, parseFlexibleDate } from '../utils/excelImport.js';
 
 const router = Router();
 
@@ -23,6 +26,8 @@ const TASK_JOINS = `
 
 const DEV_FIELDS = `
   d.id, d.name, d.description, d.phase, d.start_date AS startDate,
+  d.questions, d.observations, d.requested_at AS requestedAt,
+  d.hours_estimate AS hoursEstimate, d.completion_notes AS completionNotes,
   d.created_at AS createdAt, d.updated_at AS updatedAt,
   d.created_by AS createdBy, u.name AS createdByName
 `;
@@ -73,11 +78,117 @@ router.post('/', requireAuth, requirePermission('manageDevelopments'), async (re
   res.status(201).json({ development: rows[0] });
 });
 
+router.post('/import', requireAuth, requirePermission('manageDevelopments'), (req, res) => {
+  uploadSpreadsheet.single('file')(req, res, async (err) => {
+    if (err) {
+      return res.status(400).json({ error: err.message || 'Invalid file upload' });
+    }
+    if (!req.file) {
+      return res.status(400).json({ error: 'No file uploaded' });
+    }
+
+    const workbook = new ExcelJS.Workbook();
+    try {
+      await workbook.xlsx.load(req.file.buffer);
+    } catch {
+      return res.status(400).json({ error: 'Could not read the file as an Excel (.xlsx) workbook' });
+    }
+
+    const worksheet = workbook.worksheets[0];
+    if (!worksheet) {
+      return res.status(400).json({ error: 'The workbook has no sheets' });
+    }
+
+    const headerRow = worksheet.getRow(1);
+    const columnField = {};
+    headerRow.eachCell((cell, colNumber) => {
+      const field = fieldForHeader(cellText(cell.value));
+      if (field) columnField[colNumber] = field;
+    });
+
+    if (!Object.values(columnField).includes('name')) {
+      return res.status(400).json({ error: 'Could not find a "Tema" column in the first row' });
+    }
+
+    const created = [];
+    const skipped = [];
+
+    for (let rowNumber = 2; rowNumber <= worksheet.rowCount; rowNumber++) {
+      const row = worksheet.getRow(rowNumber);
+      if (row.cellCount === 0) continue;
+
+      const fields = {};
+      row.eachCell({ includeEmpty: false }, (cell, colNumber) => {
+        const field = columnField[colNumber];
+        if (field) fields[field] = cellText(cell.value);
+      });
+
+      const name = (fields.name || '').trim();
+      if (!name) continue;
+      if (name.length > 160) {
+        skipped.push({ row: rowNumber, name, reason: 'Name (Tema) longer than 160 characters' });
+        continue;
+      }
+
+      const warnings = [];
+      let phase = 'waiting_list';
+      if (fields.phaseRaw) {
+        const mapped = mapPhase(fields.phaseRaw);
+        if (mapped) {
+          phase = mapped;
+        } else {
+          warnings.push(`Status "${fields.phaseRaw}" not recognized, defaulted to Waiting List`);
+        }
+      }
+
+      let requestedAt = null;
+      if (fields.requestedAt) {
+        requestedAt = parseFlexibleDate(fields.requestedAt);
+        if (!requestedAt) warnings.push(`Could not parse "Data Pedido" value "${fields.requestedAt}"`);
+      }
+
+      try {
+        const [result] = await pool.execute(
+          `INSERT INTO developments
+             (name, description, phase, questions, observations, requested_at, hours_estimate, completion_notes, created_by)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+          [
+            name,
+            fields.description ? fields.description.trim() : null,
+            phase,
+            fields.questions ? fields.questions.trim() : null,
+            fields.observations ? fields.observations.trim() : null,
+            requestedAt,
+            fields.hoursEstimate ? fields.hoursEstimate.trim().slice(0, 50) : null,
+            fields.completionNotes ? fields.completionNotes.trim().slice(0, 500) : null,
+            req.user.id,
+          ]
+        );
+        created.push({ row: rowNumber, id: result.insertId, name, warnings });
+      } catch {
+        skipped.push({ row: rowNumber, name, reason: 'Could not save this row' });
+      }
+    }
+
+    res.json({ createdCount: created.length, created, skipped });
+  });
+});
+
 router.put('/:id', requireAuth, requirePermission('manageDevelopments'), async (req, res) => {
   const id = Number(req.params.id);
   if (!Number.isInteger(id)) return res.status(400).json({ error: 'Invalid development id' });
 
-  const { name, description, phase, startDate } = req.body || {};
+  const {
+    name,
+    description,
+    phase,
+    startDate,
+    questions,
+    observations,
+    requestedAt,
+    hoursEstimate,
+    completionNotes,
+  } = req.body || {};
   const [existingRows] = await pool.execute('SELECT * FROM developments WHERE id = ?', [id]);
   const existing = existingRows[0];
   if (!existing) return res.status(404).json({ error: 'Development not found' });
@@ -91,14 +202,30 @@ router.put('/:id', requireAuth, requirePermission('manageDevelopments'), async (
   if (startDate !== undefined && startDate !== null && startDate !== '' && !isValidDateString(startDate)) {
     return res.status(400).json({ error: 'Start date must be a valid date' });
   }
+  if (requestedAt !== undefined && requestedAt !== null && requestedAt !== '' && !isValidDateString(requestedAt)) {
+    return res.status(400).json({ error: 'Requested date must be a valid date' });
+  }
+  if (typeof hoursEstimate === 'string' && hoursEstimate.length > 50) {
+    return res.status(400).json({ error: 'Hours estimate must be at most 50 characters' });
+  }
+  if (typeof completionNotes === 'string' && completionNotes.length > 500) {
+    return res.status(400).json({ error: 'Completion notes must be at most 500 characters' });
+  }
 
   await pool.execute(
-    'UPDATE developments SET name = ?, description = ?, phase = ?, start_date = ? WHERE id = ?',
+    `UPDATE developments SET name = ?, description = ?, phase = ?, start_date = ?,
+       questions = ?, observations = ?, requested_at = ?, hours_estimate = ?, completion_notes = ?
+     WHERE id = ?`,
     [
       name !== undefined ? name.trim() : existing.name,
       description !== undefined ? String(description).trim() : existing.description,
       phase !== undefined ? phase : existing.phase,
       startDate !== undefined ? startDate || null : existing.start_date,
+      questions !== undefined ? String(questions).trim() || null : existing.questions,
+      observations !== undefined ? String(observations).trim() || null : existing.observations,
+      requestedAt !== undefined ? requestedAt || null : existing.requested_at,
+      hoursEstimate !== undefined ? String(hoursEstimate).trim() || null : existing.hours_estimate,
+      completionNotes !== undefined ? String(completionNotes).trim() || null : existing.completion_notes,
       id,
     ]
   );
