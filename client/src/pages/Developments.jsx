@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { api } from '../api/client';
 import { useAuth } from '../context/AuthContext';
@@ -13,6 +13,8 @@ export default function Developments() {
   const [showForm, setShowForm] = useState(false);
   const [form, setForm] = useState({ name: '', description: '', phase: 'waiting_list', startDate: '' });
   const [saving, setSaving] = useState(false);
+  const [view, setView] = useState('grid');
+  const [search, setSearch] = useState('');
 
   const importInputRef = useRef(null);
   const [importing, setImporting] = useState(false);
@@ -33,6 +35,12 @@ export default function Developments() {
   useEffect(() => {
     load();
   }, []);
+
+  const filteredDevelopments = useMemo(() => {
+    const term = search.trim().toLowerCase();
+    if (!term) return developments;
+    return developments.filter((dev) => dev.name.toLowerCase().includes(term));
+  }, [developments, search]);
 
   async function handleCreate(e) {
     e.preventDefault();
@@ -169,13 +177,66 @@ export default function Developments() {
         </form>
       )}
 
+      {developments.length > 0 && (
+        <div className="developments-toolbar">
+          <input
+            type="text"
+            className="search-input"
+            placeholder="Search by name..."
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+          />
+          <div className="view-toggle">
+            <button className={view === 'grid' ? 'active' : ''} onClick={() => setView('grid')}>
+              Grid
+            </button>
+            <button className={view === 'list' ? 'active' : ''} onClick={() => setView('list')}>
+              List
+            </button>
+          </div>
+        </div>
+      )}
+
       {loading ? (
         <p>Loading...</p>
       ) : developments.length === 0 ? (
         <div className="empty-state">No developments yet.</div>
+      ) : filteredDevelopments.length === 0 ? (
+        <div className="empty-state">No developments match your search.</div>
+      ) : view === 'list' ? (
+        <table className="table">
+          <thead>
+            <tr>
+              <th>Name</th>
+              <th>Status</th>
+              <th>Description</th>
+              <th>Created</th>
+              <th>Tasks</th>
+              <th>By</th>
+            </tr>
+          </thead>
+          <tbody>
+            {filteredDevelopments.map((dev) => (
+              <tr key={dev.id}>
+                <td>
+                  <Link className="table__link" to={`/developments/${dev.id}`}>
+                    {dev.name}
+                  </Link>
+                </td>
+                <td>
+                  <PhaseBadge phase={dev.phase} list={DEVELOPMENT_PHASES} />
+                </td>
+                <td className="table__description">{dev.description}</td>
+                <td>{new Date(dev.createdAt).toLocaleDateString()}</td>
+                <td>{dev.taskCount}</td>
+                <td>{dev.createdByName}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
       ) : (
         <div className="grid">
-          {developments.map((dev) => (
+          {filteredDevelopments.map((dev) => (
             <Link to={`/developments/${dev.id}`} key={dev.id} className="card card--link">
               <div className="card__header">
                 <h3>{dev.name}</h3>
