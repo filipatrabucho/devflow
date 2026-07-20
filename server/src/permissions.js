@@ -9,6 +9,7 @@ const COLUMN_TO_KEY = {
   can_manage_developments: 'manageDevelopments',
   can_manage_tasks: 'manageTasks',
   can_view_all_tasks: 'viewAllTasks',
+  can_validate_tasks: 'validateTasks',
 };
 
 export function invalidateRoleCache() {
@@ -21,7 +22,7 @@ export async function getRoles() {
 
   const [rows] = await pool.query(
     `SELECT key_name AS keyName, label, can_manage_users, can_manage_developments,
-            can_manage_tasks, can_view_all_tasks
+            can_manage_tasks, can_view_all_tasks, can_validate_tasks
      FROM roles ORDER BY id ASC`
   );
 
@@ -33,6 +34,7 @@ export async function getRoles() {
       manageDevelopments: !!row.can_manage_developments,
       manageTasks: !!row.can_manage_tasks,
       viewAllTasks: !!row.can_view_all_tasks,
+      validateTasks: !!row.can_validate_tasks,
     },
   }));
   cachedAt = now;
@@ -51,6 +53,7 @@ export async function getPermissionsFor(roleKey) {
     manageDevelopments: false,
     manageTasks: false,
     viewAllTasks: false,
+    validateTasks: false,
   };
 }
 

@@ -10,6 +10,18 @@ const router = Router();
 const DEVELOPER_ALLOWED_PHASES = new Set(['not_started', 'in_progress', 'in_validation']);
 const VALIDATED_PHASES = new Set(['approved', 'done']);
 
+const COMMENT_FIELDS = `
+  c.id, c.task_id AS taskId, c.body, c.is_system AS isSystem, c.created_at AS createdAt,
+  c.author_id AS authorId, u.name AS authorName, u.avatar_path AS authorAvatar
+`;
+
+function humanizePhase(key) {
+  return key
+    .split('_')
+    .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+    .join(' ');
+}
+
 router.get('/', requireAuth, requirePermission('viewAllTasks'), async (_req, res) => {
   const [rows] = await pool.query(
     `SELECT ${TASK_FIELDS}, d.name AS developmentName FROM tasks t
@@ -32,6 +44,54 @@ router.get('/mine', requireAuth, async (req, res) => {
   res.json({ tasks: rows });
 });
 
+router.get('/pending-validation', requireAuth, requirePermission('validateTasks'), async (_req, res) => {
+  const [rows] = await pool.query(
+    `SELECT ${TASK_FIELDS}, d.name AS developmentName FROM tasks t
+     ${TASK_JOINS}
+     LEFT JOIN developments d ON d.id = t.development_id
+     WHERE t.phase = 'in_validation'
+     ORDER BY t.updated_at ASC`
+  );
+  res.json({ tasks: rows });
+});
+
+router.get('/:id/comments', requireAuth, async (req, res) => {
+  const id = Number(req.params.id);
+  if (!Number.isInteger(id)) return res.status(400).json({ error: 'Invalid task id' });
+
+  const [rows] = await pool.execute(
+    `SELECT ${COMMENT_FIELDS} FROM task_comments c
+     LEFT JOIN users u ON u.id = c.author_id
+     WHERE c.task_id = ? ORDER BY c.created_at ASC`,
+    [id]
+  );
+  res.json({ comments: rows });
+});
+
+router.post('/:id/comments', requireAuth, async (req, res) => {
+  const id = Number(req.params.id);
+  if (!Number.isInteger(id)) return res.status(400).json({ error: 'Invalid task id' });
+
+  const { body } = req.body || {};
+  if (typeof body !== 'string' || body.trim().length < 1 || body.trim().length > 2000) {
+    return res.status(400).json({ error: 'Comment must be between 1 and 2000 characters' });
+  }
+
+  const [taskRows] = await pool.execute('SELECT id FROM tasks WHERE id = ?', [id]);
+  if (!taskRows[0]) return res.status(404).json({ error: 'Task not found' });
+
+  const [result] = await pool.execute(
+    'INSERT INTO task_comments (task_id, author_id, body, is_system) VALUES (?, ?, ?, 0)',
+    [id, req.user.id, body.trim()]
+  );
+
+  const [rows] = await pool.execute(
+    `SELECT ${COMMENT_FIELDS} FROM task_comments c LEFT JOIN users u ON u.id = c.author_id WHERE c.id = ?`,
+    [result.insertId]
+  );
+  res.status(201).json({ comment: rows[0] });
+});
+
 router.put('/:id', requireAuth, async (req, res) => {
   const id = Number(req.params.id);
   if (!Number.isInteger(id)) return res.status(400).json({ error: 'Invalid task id' });
@@ -42,12 +102,13 @@ router.put('/:id', requireAuth, async (req, res) => {
 
   const permissions = await getPermissionsFor(req.user.role);
   const canManage = permissions.manageTasks;
+  const canValidate = permissions.validateTasks;
   const isAssignee = task.assigned_to === req.user.id;
-  if (!canManage && !isAssignee) {
+  if (!canManage && !canValidate && !isAssignee) {
     return res.status(403).json({ error: 'You can only update tasks assigned to you' });
   }
 
-  const { title, description, assignedTo, phase } = req.body || {};
+  const { title, description, assignedTo, phase, comment } = req.body || {};
   let {
     title: nextTitle,
     description: nextDescription,
@@ -81,13 +142,15 @@ router.put('/:id', requireAuth, async (req, res) => {
     return res.status(403).json({ error: 'Only a manager can edit task details or reassign' });
   }
 
+  let phaseChanged = false;
   if (phase !== undefined) {
     if (!TASK_PHASES.includes(phase)) {
       return res.status(400).json({ error: 'Invalid phase' });
     }
-    if (!canManage && !DEVELOPER_ALLOWED_PHASES.has(phase)) {
-      return res.status(403).json({ error: 'Only a manager can approve or complete a task' });
+    if (!canManage && !canValidate && !DEVELOPER_ALLOWED_PHASES.has(phase)) {
+      return res.status(403).json({ error: 'Only a manager or validator can approve or complete a task' });
     }
+    phaseChanged = phase !== task.phase;
     nextPhase = phase;
 
     if (VALIDATED_PHASES.has(phase) && !VALIDATED_PHASES.has(task.phase)) {
@@ -104,6 +167,15 @@ router.put('/:id', requireAuth, async (req, res) => {
        validated_by = ?, validated_at = ? WHERE id = ?`,
     [nextTitle, nextDescription, nextAssignee, nextPhase, nextValidatedBy, nextValidatedAt, id]
   );
+
+  if (phaseChanged) {
+    const transition = `Moved from ${humanizePhase(task.phase)} to ${humanizePhase(nextPhase)}`;
+    const noteBody = comment && String(comment).trim() ? `${transition} — ${String(comment).trim()}` : transition;
+    await pool.execute(
+      'INSERT INTO task_comments (task_id, author_id, body, is_system) VALUES (?, ?, ?, 1)',
+      [id, req.user.id, noteBody]
+    );
+  }
 
   const [updatedRows] = await pool.execute(
     `SELECT ${TASK_FIELDS} FROM tasks t ${TASK_JOINS} WHERE t.id = ?`,

@@ -11,7 +11,8 @@ const TASK_FIELDS = `
   t.assigned_to AS assignedTo, au.name AS assignedToName, au.avatar_path AS assignedToAvatar,
   t.validated_by AS validatedBy, vu.name AS validatedByName, t.validated_at AS validatedAt,
   t.created_by AS createdBy, cu.name AS createdByName,
-  t.created_at AS createdAt, t.updated_at AS updatedAt
+  t.created_at AS createdAt, t.updated_at AS updatedAt,
+  (SELECT COUNT(*) FROM task_comments tc WHERE tc.task_id = t.id) AS commentCount
 `;
 
 const TASK_JOINS = `

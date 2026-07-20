@@ -563,6 +563,123 @@ select:focus {
   background: rgba(18, 112, 63, 0.08);
 }
 
+/* Comments */
+.task-row__comments-toggle {
+  font-size: 0.78rem;
+  color: var(--color-muted);
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  padding: 0;
+  margin-top: 4px;
+  text-decoration: underline;
+}
+.task-row__comments-toggle:hover {
+  color: var(--color-primary);
+}
+
+.comments {
+  margin-top: 14px;
+  padding-top: 14px;
+  border-top: 1px solid var(--color-border);
+}
+
+.comments__list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.comments__item {
+  display: flex;
+  gap: 10px;
+}
+
+.comments__body {
+  flex: 1;
+  min-width: 0;
+}
+.comments__body p {
+  margin-top: 2px;
+  font-size: 0.88rem;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.comments__meta {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  font-size: 0.85rem;
+}
+
+.comments__time {
+  font-size: 0.74rem;
+  color: var(--color-muted);
+}
+
+.comments__system {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  font-size: 0.8rem;
+  font-style: italic;
+  color: var(--color-muted);
+  background: #f5f6f8;
+  border-radius: 6px;
+  padding: 6px 10px;
+}
+
+.comments__form {
+  display: flex;
+  gap: 8px;
+  align-items: flex-end;
+}
+.comments__form textarea {
+  flex: 1;
+  font: inherit;
+  padding: 8px 11px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  resize: vertical;
+}
+
+/* Validation queue */
+.validation-card {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: 10px;
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.validation-card__row {
+  display: flex;
+  align-items: flex-start;
+  gap: 16px;
+}
+.validation-card__row .task-row__main .muted-link {
+  display: block;
+  margin-bottom: 4px;
+  margin-top: 0;
+}
+
+.task-card {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: 10px;
+  padding: 14px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.task-card .validation-card__row {
+  align-items: center;
+}
+
 /* View toggle */
 .view-toggle {
   display: inline-flex;

@@ -9,11 +9,15 @@ accounts and assign tasks; developers track their work through its phases.
 - **Tasks** (belong to a development, optionally assigned to a user) move through:
   Not Started → In Progress → In Validation → Approved → Done. Once a task reaches
   Approved/Done it locks to a read-only badge showing who validated it and when;
-  a "Reopen" button (Manage tasks only) sends it back to In Validation if it was
-  approved by mistake. Title/description are editable and tasks are deletable
-  (Manage tasks).
+  a "Reopen" button (Manage tasks or Validate tasks) sends it back to In Validation
+  if it was approved by mistake. Title/description are editable and tasks are
+  deletable (Manage tasks).
 - Every task/development board is also viewable as a Notion-style **drag-and-drop
   Kanban board**, in addition to the plain list view.
+- Every task has a **comment/history thread**: manual notes from anyone, plus an
+  automatic system entry every time its phase changes (who moved it, from where,
+  to where, and — if supplied — why), so a task sent backwards always has a paper
+  trail explaining the decision.
 - Login is email + password. Only `@pkf.pt` addresses are accepted.
 - There is no public sign-up — accounts are created from inside the app (Users page),
   and an existing user's role can be changed at any time from the same page.
@@ -21,26 +25,32 @@ accounts and assign tasks; developers track their work through its phases.
 ## Roles & permissions
 
 Four roles ship by default — **Senior**, **Admin**, **Partner**, **Developer** —
-each with four independent permission flags:
+each with five independent permission flags:
 
-| Role      | Manage users | Manage developments | Manage tasks | View all tasks |
-|-----------|:---:|:---:|:---:|:---:|
-| Senior    | ✅ | ✅ | ✅ | ✅ |
-| Admin     | ✅ | ✅ | ✅ | ✅ |
-| Partner   |    | ✅ | | ✅ (read-only) |
-| Developer |    | | | |
+| Role      | Manage users | Manage developments | Manage tasks | View all tasks | Validate tasks |
+|-----------|:---:|:---:|:---:|:---:|:---:|
+| Senior    | ✅ | ✅ | ✅ | ✅ | ✅ |
+| Admin     | ✅ | ✅ | ✅ | ✅ | ✅ |
+| Partner   |    | ✅ | | ✅ (read-only) | |
+| Developer |    | | | | |
 
-- **Manage users**: create/remove users (the only accounts that can create new users).
+- **Manage users**: create/remove users and change anyone's role (the only accounts
+  that can create new users, or new roles).
 - **Manage developments**: create/edit developments and their phase.
 - **Manage tasks**: create tasks, assign/reassign them, edit any field, and move a
   task into Approved/Done. A developer can still move their own assigned tasks
   through Not Started → In Progress → In Validation.
 - **View all tasks**: access the "All Tasks" board across every development. Only
   a role with **Manage tasks** can drag cards there — everyone else sees it read-only.
+- **Validate tasks**: a dedicated reviewer role. See every task waiting in
+  **In Validation** (own "Validation" page, across all developments regardless of
+  assignment) and Approve or Reject (send back to In Progress) with an optional
+  note — without needing full Manage tasks access to create/reassign/delete tasks.
 
-Role **labels** and **permission flags** are editable at runtime from the
-in-app **Roles** page (visible to anyone with Manage users) — the four role
-keys themselves are fixed, but what each is called and what it can do is not.
+Roles are fully editable at runtime from the in-app **Roles** page (visible to
+anyone with Manage users): rename any role, toggle its permissions, or add/remove
+custom roles entirely — the four defaults above are just a starting point, not a
+fixed set.
 
 ## Stack
 

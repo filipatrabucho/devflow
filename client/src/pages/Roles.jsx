@@ -6,6 +6,7 @@ const PERMISSION_COLUMNS = [
   { key: 'manageDevelopments', label: 'Manage developments' },
   { key: 'manageTasks', label: 'Manage tasks' },
   { key: 'viewAllTasks', label: 'View all tasks' },
+  { key: 'validateTasks', label: 'Validate tasks' },
 ];
 
 const emptyNewRole = {
@@ -15,6 +16,7 @@ const emptyNewRole = {
   manageDevelopments: false,
   manageTasks: false,
   viewAllTasks: false,
+  validateTasks: false,
 };
 
 export default function Roles() {

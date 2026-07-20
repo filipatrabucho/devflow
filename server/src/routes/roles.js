@@ -13,7 +13,7 @@ router.get('/', requireAuth, async (_req, res) => {
 });
 
 router.post('/', requireAuth, requirePermission('manageUsers'), async (req, res) => {
-  const { key, label, manageUsers, manageDevelopments, manageTasks, viewAllTasks } = req.body || {};
+  const { key, label, manageUsers, manageDevelopments, manageTasks, viewAllTasks, validateTasks } = req.body || {};
 
   if (typeof key !== 'string' || !KEY_RE.test(key)) {
     return res
@@ -30,9 +30,10 @@ router.post('/', requireAuth, requirePermission('manageUsers'), async (req, res)
   }
 
   await pool.execute(
-    `INSERT INTO roles (key_name, label, can_manage_users, can_manage_developments, can_manage_tasks, can_view_all_tasks)
-     VALUES (?, ?, ?, ?, ?, ?)`,
-    [key, label.trim(), !!manageUsers, !!manageDevelopments, !!manageTasks, !!viewAllTasks]
+    `INSERT INTO roles
+       (key_name, label, can_manage_users, can_manage_developments, can_manage_tasks, can_view_all_tasks, can_validate_tasks)
+     VALUES (?, ?, ?, ?, ?, ?, ?)`,
+    [key, label.trim(), !!manageUsers, !!manageDevelopments, !!manageTasks, !!viewAllTasks, !!validateTasks]
   );
 
   invalidateRoleCache();
@@ -71,7 +72,7 @@ router.delete('/:key', requireAuth, requirePermission('manageUsers'), async (req
 
 router.put('/:key', requireAuth, requirePermission('manageUsers'), async (req, res) => {
   const { key } = req.params;
-  const { label, manageUsers, manageDevelopments, manageTasks, viewAllTasks } = req.body || {};
+  const { label, manageUsers, manageDevelopments, manageTasks, viewAllTasks, validateTasks } = req.body || {};
 
   const [existingRows] = await pool.execute('SELECT * FROM roles WHERE key_name = ?', [key]);
   const existing = existingRows[0];
@@ -88,6 +89,7 @@ router.put('/:key', requireAuth, requirePermission('manageUsers'), async (req, r
       manageDevelopments !== undefined ? !!manageDevelopments : !!existing.can_manage_developments,
     can_manage_tasks: manageTasks !== undefined ? !!manageTasks : !!existing.can_manage_tasks,
     can_view_all_tasks: viewAllTasks !== undefined ? !!viewAllTasks : !!existing.can_view_all_tasks,
+    can_validate_tasks: validateTasks !== undefined ? !!validateTasks : !!existing.can_validate_tasks,
   };
 
   if (!next.can_manage_users) {
@@ -102,13 +104,14 @@ router.put('/:key', requireAuth, requirePermission('manageUsers'), async (req, r
 
   await pool.execute(
     `UPDATE roles SET label = ?, can_manage_users = ?, can_manage_developments = ?,
-       can_manage_tasks = ?, can_view_all_tasks = ? WHERE key_name = ?`,
+       can_manage_tasks = ?, can_view_all_tasks = ?, can_validate_tasks = ? WHERE key_name = ?`,
     [
       next.label,
       next.can_manage_users,
       next.can_manage_developments,
       next.can_manage_tasks,
       next.can_view_all_tasks,
+      next.can_validate_tasks,
       key,
     ]
   );

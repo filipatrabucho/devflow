@@ -8,6 +8,7 @@ const NO_PERMISSIONS = {
   manageDevelopments: false,
   manageTasks: false,
   viewAllTasks: false,
+  validateTasks: false,
 };
 
 export function AuthProvider({ children }) {

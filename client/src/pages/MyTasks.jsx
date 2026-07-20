@@ -5,15 +5,18 @@ import { useAuth } from '../context/AuthContext';
 import { TASK_PHASES, MANAGER_ONLY_TASK_PHASES } from '../constants';
 import PhaseBadge from '../components/PhaseBadge';
 import KanbanBoard from '../components/KanbanBoard';
+import TaskComments from '../components/TaskComments';
 
 export default function MyTasks() {
   const { can } = useAuth();
   const canManageTasks = can('manageTasks');
+  const canValidate = can('validateTasks');
 
   const [tasks, setTasks] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [view, setView] = useState('list');
+  const [openCommentsId, setOpenCommentsId] = useState(null);
 
   async function load() {
     setLoading(true);
@@ -86,41 +89,50 @@ export default function MyTasks() {
               (p) => !MANAGER_ONLY_TASK_PHASES.has(p.value) || p.value === task.phase
             );
             return (
-              <div className="task-row" key={task.id}>
-                <div className="task-row__main">
-                  <strong>{task.title}</strong>
-                  {task.description && <p className="muted">{task.description}</p>}
-                  <Link className="muted-link" to={`/developments/${task.developmentId}`}>
-                    {task.developmentName}
-                  </Link>
+              <div className="task-card" key={task.id}>
+                <div className="validation-card__row">
+                  <div className="task-row__main">
+                    <strong>{task.title}</strong>
+                    {task.description && <p className="muted">{task.description}</p>}
+                    <Link className="muted-link" to={`/developments/${task.developmentId}`}>
+                      {task.developmentName}
+                    </Link>
+                    <button
+                      className="task-row__comments-toggle"
+                      onClick={() => setOpenCommentsId((prev) => (prev === task.id ? null : task.id))}
+                    >
+                      {openCommentsId === task.id ? 'Hide comments' : `Comments (${task.commentCount || 0})`}
+                    </button>
+                  </div>
+                  <div className="task-row__phase">
+                    {task.validatedByName ? (
+                      <PhaseBadge phase={task.phase} list={TASK_PHASES} />
+                    ) : (
+                      <select value={task.phase} onChange={(e) => handlePhaseChange(task, e.target.value)}>
+                        {phaseOptions.map((p) => (
+                          <option key={p.value} value={p.value}>
+                            {p.label}
+                          </option>
+                        ))}
+                      </select>
+                    )}
+                    {task.validatedByName && (
+                      <div className="validated-note">
+                        Validated by {task.validatedByName} on{' '}
+                        {new Date(task.validatedAt).toLocaleDateString()}
+                        {(canManageTasks || canValidate) && (
+                          <button
+                            className="btn btn--ghost btn--reopen"
+                            onClick={() => handlePhaseChange(task, 'in_validation')}
+                          >
+                            Reopen
+                          </button>
+                        )}
+                      </div>
+                    )}
+                  </div>
                 </div>
-                <div className="task-row__phase">
-                  {task.validatedByName ? (
-                    <PhaseBadge phase={task.phase} list={TASK_PHASES} />
-                  ) : (
-                    <select value={task.phase} onChange={(e) => handlePhaseChange(task, e.target.value)}>
-                      {phaseOptions.map((p) => (
-                        <option key={p.value} value={p.value}>
-                          {p.label}
-                        </option>
-                      ))}
-                    </select>
-                  )}
-                  {task.validatedByName && (
-                    <div className="validated-note">
-                      Validated by {task.validatedByName} on{' '}
-                      {new Date(task.validatedAt).toLocaleDateString()}
-                      {canManageTasks && (
-                        <button
-                          className="btn btn--ghost btn--reopen"
-                          onClick={() => handlePhaseChange(task, 'in_validation')}
-                        >
-                          Reopen
-                        </button>
-                      )}
-                    </div>
-                  )}
-                </div>
+                {openCommentsId === task.id && <TaskComments taskId={task.id} />}
               </div>
             );
           })}

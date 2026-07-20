@@ -24,10 +24,21 @@ async function main() {
     multipleStatements: true,
   });
 
+  const [colCheck] = await connection.query(
+    'SELECT COUNT(*) AS cnt FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = ? AND TABLE_NAME = ? AND COLUMN_NAME = ?',
+    [DB_NAME, 'roles', 'can_validate_tasks']
+  );
+  const hadValidateColumn = colCheck[0].cnt > 0;
+
   const schemaSql = fs.readFileSync(path.join(__dirname, 'schema.sql'), 'utf8');
   console.log('Applying schema...');
   await connection.query(schemaSql);
   await connection.changeUser({ database: DB_NAME });
+
+  if (!hadValidateColumn) {
+    await connection.execute("UPDATE roles SET can_validate_tasks = 1 WHERE key_name IN ('senior', 'admin')");
+    console.log('Defaulted "Validate tasks" to on for the senior and admin roles.');
+  }
 
   const [rows] = await connection.query('SELECT COUNT(*) AS count FROM users');
   if (rows[0].count === 0) {

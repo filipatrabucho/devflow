@@ -18,17 +18,22 @@ CREATE TABLE IF NOT EXISTS roles (
   can_manage_developments TINYINT(1)   NOT NULL DEFAULT 0,
   can_manage_tasks        TINYINT(1)   NOT NULL DEFAULT 0,
   can_view_all_tasks      TINYINT(1)   NOT NULL DEFAULT 0,
+  can_validate_tasks      TINYINT(1)   NOT NULL DEFAULT 0,
   created_at              DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
   updated_at              DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
 ) ENGINE=InnoDB;
 
+-- Upgrade path for installations created before task validation existed.
+-- (init.js additionally defaults senior/admin to 1 the first time this runs.)
+ALTER TABLE roles ADD COLUMN IF NOT EXISTS can_validate_tasks TINYINT(1) NOT NULL DEFAULT 0 AFTER can_view_all_tasks;
+
 INSERT IGNORE INTO roles
-  (key_name, label, can_manage_users, can_manage_developments, can_manage_tasks, can_view_all_tasks)
+  (key_name, label, can_manage_users, can_manage_developments, can_manage_tasks, can_view_all_tasks, can_validate_tasks)
 VALUES
-  ('senior',    'Senior',    1, 1, 1, 1),
-  ('admin',     'Admin',     1, 1, 1, 1),
-  ('partner',   'Partner',   0, 1, 0, 1),
-  ('developer', 'Developer', 0, 0, 0, 0);
+  ('senior',    'Senior',    1, 1, 1, 1, 1),
+  ('admin',     'Admin',     1, 1, 1, 1, 1),
+  ('partner',   'Partner',   0, 1, 0, 1, 0),
+  ('developer', 'Developer', 0, 0, 0, 0, 0);
 
 CREATE TABLE IF NOT EXISTS users (
   id            INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
@@ -90,3 +95,20 @@ ALTER TABLE tasks ADD COLUMN IF NOT EXISTS validated_at DATETIME NULL AFTER vali
 
 CREATE INDEX IF NOT EXISTS idx_tasks_development ON tasks(development_id);
 CREATE INDEX IF NOT EXISTS idx_tasks_assigned_to ON tasks(assigned_to);
+
+-- Comment history for a task: manual notes plus an automatic entry (is_system=1)
+-- every time its phase changes, so there's always a record of why it moved.
+CREATE TABLE IF NOT EXISTS task_comments (
+  id         INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+  task_id    INT UNSIGNED NOT NULL,
+  author_id  INT UNSIGNED NULL,
+  body       TEXT NOT NULL,
+  is_system  TINYINT(1) NOT NULL DEFAULT 0,
+  created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  CONSTRAINT fk_task_comments_task
+    FOREIGN KEY (task_id) REFERENCES tasks(id) ON DELETE CASCADE,
+  CONSTRAINT fk_task_comments_author
+    FOREIGN KEY (author_id) REFERENCES users(id) ON DELETE SET NULL
+) ENGINE=InnoDB;
+
+CREATE INDEX IF NOT EXISTS idx_task_comments_task ON task_comments(task_id);

@@ -24,6 +24,7 @@ export default function Layout() {
           </NavLink>
           <NavLink to="/my-tasks">My Tasks</NavLink>
           {can('viewAllTasks') && <NavLink to="/all-tasks">All Tasks</NavLink>}
+          {can('validateTasks') && <NavLink to="/validation">Validation</NavLink>}
           {can('manageUsers') && <NavLink to="/users">Users</NavLink>}
           {can('manageUsers') && <NavLink to="/roles">Roles</NavLink>}
           <NavLink to="/profile">Profile</NavLink>

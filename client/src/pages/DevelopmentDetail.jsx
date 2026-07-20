@@ -5,6 +5,7 @@ import { useAuth } from '../context/AuthContext';
 import { DEVELOPMENT_PHASES, TASK_PHASES, MANAGER_ONLY_TASK_PHASES } from '../constants';
 import PhaseBadge from '../components/PhaseBadge';
 import Avatar from '../components/Avatar';
+import TaskComments from '../components/TaskComments';
 
 export default function DevelopmentDetail() {
   const { id } = useParams();
@@ -12,6 +13,7 @@ export default function DevelopmentDetail() {
   const { user, can } = useAuth();
   const canManageDevelopments = can('manageDevelopments');
   const canManageTasks = can('manageTasks');
+  const canValidate = can('validateTasks');
 
   const [development, setDevelopment] = useState(null);
   const [tasks, setTasks] = useState([]);
@@ -29,6 +31,7 @@ export default function DevelopmentDetail() {
 
   const [editingTaskId, setEditingTaskId] = useState(null);
   const [taskForm, setTaskForm] = useState({ title: '', description: '' });
+  const [openCommentsId, setOpenCommentsId] = useState(null);
 
   async function load() {
     setLoading(true);
@@ -315,10 +318,11 @@ export default function DevelopmentDetail() {
         <div className="task-list">
           {tasks.map((task) => {
             const isValidated = !!task.validatedByName;
-            const canEditPhase = !isValidated && (canManageTasks || task.assignedTo === user.id);
-            const phaseOptions = canManageTasks
-              ? TASK_PHASES
-              : TASK_PHASES.filter((p) => !MANAGER_ONLY_TASK_PHASES.has(p.value) || p.value === task.phase);
+            const canEditPhase = !isValidated && (canManageTasks || canValidate || task.assignedTo === user.id);
+            const phaseOptions =
+              canManageTasks || canValidate
+                ? TASK_PHASES
+                : TASK_PHASES.filter((p) => !MANAGER_ONLY_TASK_PHASES.has(p.value) || p.value === task.phase);
 
             if (editingTaskId === task.id) {
               return (
@@ -354,76 +358,86 @@ export default function DevelopmentDetail() {
             }
 
             return (
-              <div className="task-row" key={task.id}>
-                <div className="task-row__main">
-                  <strong>{task.title}</strong>
-                  {task.description && <p className="muted">{task.description}</p>}
-                </div>
-
-                <div className="task-row__assignee">
-                  {canManageTasks ? (
-                    <select
-                      value={task.assignedTo || ''}
-                      onChange={(e) => handleAssigneeChange(task, e.target.value)}
+              <div className="task-card" key={task.id}>
+                <div className="validation-card__row">
+                  <div className="task-row__main">
+                    <strong>{task.title}</strong>
+                    {task.description && <p className="muted">{task.description}</p>}
+                    <button
+                      className="task-row__comments-toggle"
+                      onClick={() => setOpenCommentsId((prev) => (prev === task.id ? null : task.id))}
                     >
-                      <option value="">Unassigned</option>
-                      {users.map((u) => (
-                        <option key={u.id} value={u.id}>
-                          {u.name}
-                        </option>
-                      ))}
-                    </select>
-                  ) : task.assignedToName ? (
-                    <div className="assignee-chip">
-                      <Avatar name={task.assignedToName} src={task.assignedToAvatar} size={24} />
-                      <span>{task.assignedToName}</span>
-                    </div>
-                  ) : (
-                    <span className="muted">Unassigned</span>
-                  )}
-                </div>
-
-                <div className="task-row__phase">
-                  {canEditPhase ? (
-                    <select
-                      value={task.phase}
-                      onChange={(e) => handleTaskPhaseChange(task, e.target.value)}
-                    >
-                      {phaseOptions.map((p) => (
-                        <option key={p.value} value={p.value}>
-                          {p.label}
-                        </option>
-                      ))}
-                    </select>
-                  ) : (
-                    <PhaseBadge phase={task.phase} list={TASK_PHASES} />
-                  )}
-                  {isValidated && (
-                    <div className="validated-note">
-                      Validated by {task.validatedByName} on{' '}
-                      {new Date(task.validatedAt).toLocaleDateString()}
-                      {canManageTasks && (
-                        <button
-                          className="btn btn--ghost btn--reopen"
-                          onClick={() => handleTaskPhaseChange(task, 'in_validation')}
-                        >
-                          Reopen
-                        </button>
-                      )}
-                    </div>
-                  )}
-                </div>
-
-                {canManageTasks && (
-                  <div className="table__actions">
-                    <button className="btn btn--secondary" onClick={() => startEditTask(task)}>
-                      Edit
-                    </button>
-                    <button className="btn btn--ghost btn--danger" onClick={() => handleDeleteTask(task.id)}>
-                      Delete
+                      {openCommentsId === task.id ? 'Hide comments' : `Comments (${task.commentCount || 0})`}
                     </button>
                   </div>
-                )}
+
+                  <div className="task-row__assignee">
+                    {canManageTasks ? (
+                      <select
+                        value={task.assignedTo || ''}
+                        onChange={(e) => handleAssigneeChange(task, e.target.value)}
+                      >
+                        <option value="">Unassigned</option>
+                        {users.map((u) => (
+                          <option key={u.id} value={u.id}>
+                            {u.name}
+                          </option>
+                        ))}
+                      </select>
+                    ) : task.assignedToName ? (
+                      <div className="assignee-chip">
+                        <Avatar name={task.assignedToName} src={task.assignedToAvatar} size={24} />
+                        <span>{task.assignedToName}</span>
+                      </div>
+                    ) : (
+                      <span className="muted">Unassigned</span>
+                    )}
+                  </div>
+
+                  <div className="task-row__phase">
+                    {canEditPhase ? (
+                      <select
+                        value={task.phase}
+                        onChange={(e) => handleTaskPhaseChange(task, e.target.value)}
+                      >
+                        {phaseOptions.map((p) => (
+                          <option key={p.value} value={p.value}>
+                            {p.label}
+                          </option>
+                        ))}
+                      </select>
+                    ) : (
+                      <PhaseBadge phase={task.phase} list={TASK_PHASES} />
+                    )}
+                    {isValidated && (
+                      <div className="validated-note">
+                        Validated by {task.validatedByName} on{' '}
+                        {new Date(task.validatedAt).toLocaleDateString()}
+                        {(canManageTasks || canValidate) && (
+                          <button
+                            className="btn btn--ghost btn--reopen"
+                            onClick={() => handleTaskPhaseChange(task, 'in_validation')}
+                          >
+                            Reopen
+                          </button>
+                        )}
+                      </div>
+                    )}
+                  </div>
+
+                  {canManageTasks && (
+                    <div className="table__actions">
+                      <button className="btn btn--secondary" onClick={() => startEditTask(task)}>
+                        Edit
+                      </button>
+                      <button className="btn btn--ghost btn--danger" onClick={() => handleDeleteTask(task.id)}>
+                        Delete
+                      </button>
+                    </div>
+                  )}
+                </div>
+
+                {openCommentsId === task.id && <TaskComments taskId={task.id} />}
               </div>
             );
           })}
