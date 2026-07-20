@@ -1,0 +1,20 @@
+node_modules/
+dist/
+build/
+
+# Environment
+.env
+.env.local
+
+# Uploaded avatars (keep the folder, ignore contents)
+server/uploads/avatars/*
+!server/uploads/avatars/.gitkeep
+
+# Logs
+npm-debug.log*
+*.log
+
+# Editor/OS
+.DS_Store
+.vscode/
+.idea/
