@@ -16,6 +16,16 @@ const PUBLIC_USER_FIELDS = `
 `;
 const USER_SELECT = `SELECT ${PUBLIC_USER_FIELDS} FROM users u LEFT JOIN roles r ON r.key_name = u.role`;
 
+async function isLastManager(targetId) {
+  const [[{ managerCount }]] = await pool.query(
+    `SELECT COUNT(*) AS managerCount FROM users u
+     JOIN roles r ON r.key_name = u.role
+     WHERE r.can_manage_users = 1 AND u.id != ?`,
+    [targetId]
+  );
+  return managerCount === 0;
+}
+
 router.get('/', requireAuth, async (_req, res) => {
   const [rows] = await pool.query(`${USER_SELECT} ORDER BY u.name ASC`);
   res.json({ users: rows });
@@ -51,6 +61,38 @@ router.post('/', requireAuth, requirePermission('manageUsers'), async (req, res)
 
   const [rows] = await pool.execute(`${USER_SELECT} WHERE u.id = ?`, [result.insertId]);
   res.status(201).json({ user: rows[0] });
+});
+
+router.put('/:id', requireAuth, requirePermission('manageUsers'), async (req, res) => {
+  const targetId = Number(req.params.id);
+  if (!Number.isInteger(targetId)) {
+    return res.status(400).json({ error: 'Invalid user id' });
+  }
+
+  const { role } = req.body || {};
+  const roles = await getRoles();
+  const nextRole = roles.find((r) => r.key === role);
+  if (!nextRole) {
+    return res.status(400).json({ error: 'Invalid role' });
+  }
+
+  const [targetRows] = await pool.execute(
+    `SELECT r.can_manage_users AS canManageUsers FROM users u
+     LEFT JOIN roles r ON r.key_name = u.role WHERE u.id = ? LIMIT 1`,
+    [targetId]
+  );
+  if (!targetRows[0]) {
+    return res.status(404).json({ error: 'User not found' });
+  }
+
+  const losingManageUsers = targetRows[0].canManageUsers && !nextRole.permissions.manageUsers;
+  if (losingManageUsers && (await isLastManager(targetId))) {
+    return res.status(400).json({ error: 'Cannot remove the last user who can manage users' });
+  }
+
+  await pool.execute('UPDATE users SET role = ? WHERE id = ?', [role, targetId]);
+  const [rows] = await pool.execute(`${USER_SELECT} WHERE u.id = ?`, [targetId]);
+  res.json({ user: rows[0] });
 });
 
 router.put('/me/password', requireAuth, async (req, res) => {
@@ -114,16 +156,8 @@ router.delete('/:id', requireAuth, requirePermission('manageUsers'), async (req,
   if (!targetRows[0]) {
     return res.status(404).json({ error: 'User not found' });
   }
-  if (targetRows[0].canManageUsers) {
-    const [[{ managerCount }]] = await pool.query(
-      `SELECT COUNT(*) AS managerCount FROM users u
-       JOIN roles r ON r.key_name = u.role
-       WHERE r.can_manage_users = 1 AND u.id != ?`,
-      [targetId]
-    );
-    if (managerCount === 0) {
-      return res.status(400).json({ error: 'Cannot remove the last user who can manage users' });
-    }
+  if (targetRows[0].canManageUsers && (await isLastManager(targetId))) {
+    return res.status(400).json({ error: 'Cannot remove the last user who can manage users' });
   }
 
   await pool.execute('DELETE FROM users WHERE id = ?', [targetId]);

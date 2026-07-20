@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Link, useParams } from 'react-router-dom';
+import { Link, useNavigate, useParams } from 'react-router-dom';
 import { api } from '../api/client';
 import { useAuth } from '../context/AuthContext';
 import { DEVELOPMENT_PHASES, TASK_PHASES, MANAGER_ONLY_TASK_PHASES } from '../constants';
@@ -8,6 +8,7 @@ import Avatar from '../components/Avatar';
 
 export default function DevelopmentDetail() {
   const { id } = useParams();
+  const navigate = useNavigate();
   const { user, can } = useAuth();
   const canManageDevelopments = can('manageDevelopments');
   const canManageTasks = can('manageTasks');
@@ -17,9 +18,17 @@ export default function DevelopmentDetail() {
   const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+
   const [showForm, setShowForm] = useState(false);
   const [form, setForm] = useState({ title: '', description: '', assignedTo: '' });
   const [saving, setSaving] = useState(false);
+
+  const [editingDev, setEditingDev] = useState(false);
+  const [devForm, setDevForm] = useState({ name: '', description: '', startDate: '' });
+  const [savingDev, setSavingDev] = useState(false);
+
+  const [editingTaskId, setEditingTaskId] = useState(null);
+  const [taskForm, setTaskForm] = useState({ title: '', description: '' });
 
   async function load() {
     setLoading(true);
@@ -49,6 +58,44 @@ export default function DevelopmentDetail() {
     try {
       const data = await api.put(`/developments/${id}`, { phase });
       setDevelopment(data.development);
+    } catch (err) {
+      setError(err.message);
+    }
+  }
+
+  function startEditDev() {
+    setDevForm({
+      name: development.name,
+      description: development.description || '',
+      startDate: development.startDate ? development.startDate.slice(0, 10) : '',
+    });
+    setEditingDev(true);
+  }
+
+  async function handleSaveDev(e) {
+    e.preventDefault();
+    setSavingDev(true);
+    setError('');
+    try {
+      const data = await api.put(`/developments/${id}`, {
+        name: devForm.name,
+        description: devForm.description,
+        startDate: devForm.startDate || null,
+      });
+      setDevelopment(data.development);
+      setEditingDev(false);
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setSavingDev(false);
+    }
+  }
+
+  async function handleDeleteDev() {
+    if (!window.confirm('Delete this development and all of its tasks?')) return;
+    try {
+      await api.delete(`/developments/${id}`);
+      navigate('/', { replace: true });
     } catch (err) {
       setError(err.message);
     }
@@ -93,6 +140,26 @@ export default function DevelopmentDetail() {
     }
   }
 
+  function startEditTask(task) {
+    setTaskForm({ title: task.title, description: task.description || '' });
+    setEditingTaskId(task.id);
+  }
+
+  async function handleSaveTask(e, taskId) {
+    e.preventDefault();
+    setError('');
+    try {
+      const data = await api.put(`/tasks/${taskId}`, {
+        title: taskForm.title,
+        description: taskForm.description,
+      });
+      setTasks((prev) => prev.map((t) => (t.id === taskId ? data.task : t)));
+      setEditingTaskId(null);
+    } catch (err) {
+      setError(err.message);
+    }
+  }
+
   async function handleDeleteTask(taskId) {
     if (!window.confirm('Delete this task?')) return;
     try {
@@ -112,29 +179,86 @@ export default function DevelopmentDetail() {
         ‹ Back to Developments
       </Link>
 
-      <div className="page-header">
-        <div>
-          <h1>{development.name}</h1>
-          {development.description && <p className="muted">{development.description}</p>}
-        </div>
-        {canManageDevelopments ? (
-          <select
-            className="select--phase"
-            value={development.phase}
-            onChange={(e) => handlePhaseChange(e.target.value)}
-          >
-            {DEVELOPMENT_PHASES.map((p) => (
-              <option key={p.value} value={p.value}>
-                {p.label}
-              </option>
-            ))}
-          </select>
-        ) : (
-          <PhaseBadge phase={development.phase} list={DEVELOPMENT_PHASES} />
-        )}
-      </div>
-
       {error && <div className="alert alert--error">{error}</div>}
+
+      {editingDev ? (
+        <form className="card form" onSubmit={handleSaveDev}>
+          <label className="field">
+            <span>Name</span>
+            <input
+              value={devForm.name}
+              onChange={(e) => setDevForm({ ...devForm, name: e.target.value })}
+              required
+              minLength={2}
+              maxLength={160}
+            />
+          </label>
+          <label className="field">
+            <span>Description</span>
+            <textarea
+              value={devForm.description}
+              onChange={(e) => setDevForm({ ...devForm, description: e.target.value })}
+              rows={3}
+            />
+          </label>
+          <label className="field">
+            <span>Start date</span>
+            <input
+              type="date"
+              value={devForm.startDate}
+              onChange={(e) => setDevForm({ ...devForm, startDate: e.target.value })}
+            />
+          </label>
+          <div className="table__actions">
+            <button className="btn btn--primary" type="submit" disabled={savingDev}>
+              {savingDev ? 'Saving...' : 'Save'}
+            </button>
+            <button type="button" className="btn btn--ghost" onClick={() => setEditingDev(false)}>
+              Cancel
+            </button>
+          </div>
+        </form>
+      ) : (
+        <div className="page-header">
+          <div>
+            <h1>{development.name}</h1>
+            {development.description && <p className="muted">{development.description}</p>}
+            <div className="card__dates">
+              <span>Created {new Date(development.createdAt).toLocaleDateString()}</span>
+              {development.startDate && (
+                <span>Started {new Date(development.startDate).toLocaleDateString()}</span>
+              )}
+            </div>
+          </div>
+          <div className="table__actions">
+            {canManageDevelopments ? (
+              <select
+                className="select--phase"
+                value={development.phase}
+                onChange={(e) => handlePhaseChange(e.target.value)}
+              >
+                {DEVELOPMENT_PHASES.map((p) => (
+                  <option key={p.value} value={p.value}>
+                    {p.label}
+                  </option>
+                ))}
+              </select>
+            ) : (
+              <PhaseBadge phase={development.phase} list={DEVELOPMENT_PHASES} />
+            )}
+            {canManageDevelopments && (
+              <>
+                <button className="btn btn--secondary" onClick={startEditDev}>
+                  Edit
+                </button>
+                <button className="btn btn--ghost btn--danger" onClick={handleDeleteDev}>
+                  Delete
+                </button>
+              </>
+            )}
+          </div>
+        </div>
+      )}
 
       <div className="page-header">
         <h2>Tasks</h2>
@@ -190,10 +314,44 @@ export default function DevelopmentDetail() {
       ) : (
         <div className="task-list">
           {tasks.map((task) => {
-            const canEditPhase = canManageTasks || task.assignedTo === user.id;
+            const isValidated = !!task.validatedByName;
+            const canEditPhase = !isValidated && (canManageTasks || task.assignedTo === user.id);
             const phaseOptions = canManageTasks
               ? TASK_PHASES
               : TASK_PHASES.filter((p) => !MANAGER_ONLY_TASK_PHASES.has(p.value) || p.value === task.phase);
+
+            if (editingTaskId === task.id) {
+              return (
+                <form className="card form task-edit-form" key={task.id} onSubmit={(e) => handleSaveTask(e, task.id)}>
+                  <label className="field">
+                    <span>Title</span>
+                    <input
+                      value={taskForm.title}
+                      onChange={(e) => setTaskForm({ ...taskForm, title: e.target.value })}
+                      required
+                      minLength={2}
+                      maxLength={200}
+                    />
+                  </label>
+                  <label className="field">
+                    <span>Description</span>
+                    <textarea
+                      value={taskForm.description}
+                      onChange={(e) => setTaskForm({ ...taskForm, description: e.target.value })}
+                      rows={2}
+                    />
+                  </label>
+                  <div className="table__actions">
+                    <button className="btn btn--primary" type="submit">
+                      Save
+                    </button>
+                    <button type="button" className="btn btn--ghost" onClick={() => setEditingTaskId(null)}>
+                      Cancel
+                    </button>
+                  </div>
+                </form>
+              );
+            }
 
             return (
               <div className="task-row" key={task.id}>
@@ -240,18 +398,31 @@ export default function DevelopmentDetail() {
                   ) : (
                     <PhaseBadge phase={task.phase} list={TASK_PHASES} />
                   )}
-                  {task.validatedByName && (
+                  {isValidated && (
                     <div className="validated-note">
                       Validated by {task.validatedByName} on{' '}
                       {new Date(task.validatedAt).toLocaleDateString()}
+                      {canManageTasks && (
+                        <button
+                          className="btn btn--ghost btn--reopen"
+                          onClick={() => handleTaskPhaseChange(task, 'in_validation')}
+                        >
+                          Reopen
+                        </button>
+                      )}
                     </div>
                   )}
                 </div>
 
                 {canManageTasks && (
-                  <button className="btn btn--ghost btn--danger" onClick={() => handleDeleteTask(task.id)}>
-                    Delete
-                  </button>
+                  <div className="table__actions">
+                    <button className="btn btn--secondary" onClick={() => startEditTask(task)}>
+                      Edit
+                    </button>
+                    <button className="btn btn--ghost btn--danger" onClick={() => handleDeleteTask(task.id)}>
+                      Delete
+                    </button>
+                  </div>
                 )}
               </div>
             );

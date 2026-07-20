@@ -3,14 +3,20 @@
 Internal task management app for the engineering team. Managers create developer
 accounts and assign tasks; developers track their work through its phases.
 
-- **Developments** move through: Waiting List → In Search → In Development → In Production
+- **Developments** move through: Waiting List → In Search → In Development → In Production,
+  and track both a creation date and an editable start date. Renamable and deletable
+  (with all of their tasks) by anyone with Manage developments.
 - **Tasks** (belong to a development, optionally assigned to a user) move through:
-  Not Started → In Progress → In Validation → Approved → Done. Moving a task into
-  **Approved** or **Done** stamps who validated it and when (shown on the task).
+  Not Started → In Progress → In Validation → Approved → Done. Once a task reaches
+  Approved/Done it locks to a read-only badge showing who validated it and when;
+  a "Reopen" button (Manage tasks only) sends it back to In Validation if it was
+  approved by mistake. Title/description are editable and tasks are deletable
+  (Manage tasks).
 - Every task/development board is also viewable as a Notion-style **drag-and-drop
   Kanban board**, in addition to the plain list view.
 - Login is email + password. Only `@pkf.pt` addresses are accepted.
-- There is no public sign-up — accounts are created from inside the app (Users page).
+- There is no public sign-up — accounts are created from inside the app (Users page),
+  and an existing user's role can be changed at any time from the same page.
 
 ## Roles & permissions
 

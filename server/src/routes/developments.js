@@ -2,7 +2,7 @@ import { Router } from 'express';
 import pool from '../db.js';
 import { requireAuth } from '../middleware/auth.js';
 import { requirePermission } from '../permissions.js';
-import { DEVELOPMENT_PHASES } from '../utils/validators.js';
+import { DEVELOPMENT_PHASES, isValidDateString } from '../utils/validators.js';
 
 const router = Router();
 
@@ -21,7 +21,8 @@ const TASK_JOINS = `
 `;
 
 const DEV_FIELDS = `
-  d.id, d.name, d.description, d.phase, d.created_at AS createdAt, d.updated_at AS updatedAt,
+  d.id, d.name, d.description, d.phase, d.start_date AS startDate,
+  d.created_at AS createdAt, d.updated_at AS updatedAt,
   d.created_by AS createdBy, u.name AS createdByName
 `;
 
@@ -49,16 +50,19 @@ router.get('/:id', requireAuth, async (req, res) => {
 });
 
 router.post('/', requireAuth, requirePermission('manageDevelopments'), async (req, res) => {
-  const { name, description, phase } = req.body || {};
+  const { name, description, phase, startDate } = req.body || {};
 
   if (typeof name !== 'string' || name.trim().length < 2 || name.trim().length > 160) {
     return res.status(400).json({ error: 'Name must be between 2 and 160 characters' });
   }
+  if (startDate && !isValidDateString(startDate)) {
+    return res.status(400).json({ error: 'Start date must be a valid date' });
+  }
   const finalPhase = DEVELOPMENT_PHASES.includes(phase) ? phase : 'waiting_list';
 
   const [result] = await pool.execute(
-    'INSERT INTO developments (name, description, phase, created_by) VALUES (?, ?, ?, ?)',
-    [name.trim(), description ? String(description).trim() : null, finalPhase, req.user.id]
+    'INSERT INTO developments (name, description, phase, start_date, created_by) VALUES (?, ?, ?, ?, ?)',
+    [name.trim(), description ? String(description).trim() : null, finalPhase, startDate || null, req.user.id]
   );
 
   const [rows] = await pool.execute(
@@ -72,7 +76,7 @@ router.put('/:id', requireAuth, requirePermission('manageDevelopments'), async (
   const id = Number(req.params.id);
   if (!Number.isInteger(id)) return res.status(400).json({ error: 'Invalid development id' });
 
-  const { name, description, phase } = req.body || {};
+  const { name, description, phase, startDate } = req.body || {};
   const [existingRows] = await pool.execute('SELECT * FROM developments WHERE id = ?', [id]);
   const existing = existingRows[0];
   if (!existing) return res.status(404).json({ error: 'Development not found' });
@@ -83,13 +87,17 @@ router.put('/:id', requireAuth, requirePermission('manageDevelopments'), async (
   if (phase !== undefined && !DEVELOPMENT_PHASES.includes(phase)) {
     return res.status(400).json({ error: 'Invalid phase' });
   }
+  if (startDate !== undefined && startDate !== null && startDate !== '' && !isValidDateString(startDate)) {
+    return res.status(400).json({ error: 'Start date must be a valid date' });
+  }
 
   await pool.execute(
-    'UPDATE developments SET name = ?, description = ?, phase = ? WHERE id = ?',
+    'UPDATE developments SET name = ?, description = ?, phase = ?, start_date = ? WHERE id = ?',
     [
       name !== undefined ? name.trim() : existing.name,
       description !== undefined ? String(description).trim() : existing.description,
       phase !== undefined ? phase : existing.phase,
+      startDate !== undefined ? startDate || null : existing.start_date,
       id,
     ]
   );

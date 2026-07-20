@@ -18,3 +18,11 @@ export function isStrongPassword(password) {
 
 export const DEVELOPMENT_PHASES = ['waiting_list', 'in_search', 'in_development', 'in_production'];
 export const TASK_PHASES = ['not_started', 'in_progress', 'in_validation', 'approved', 'done'];
+
+const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
+
+export function isValidDateString(value) {
+  if (typeof value !== 'string' || !DATE_RE.test(value)) return false;
+  const date = new Date(`${value}T00:00:00Z`);
+  return !Number.isNaN(date.getTime());
+}

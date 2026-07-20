@@ -50,12 +50,16 @@ CREATE TABLE IF NOT EXISTS developments (
   description TEXT NULL,
   phase       ENUM('waiting_list', 'in_search', 'in_development', 'in_production')
                 NOT NULL DEFAULT 'waiting_list',
+  start_date  DATE NULL,
   created_by  INT UNSIGNED NULL,
   created_at  DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
   updated_at  DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   CONSTRAINT fk_developments_created_by
     FOREIGN KEY (created_by) REFERENCES users(id) ON DELETE SET NULL
 ) ENGINE=InnoDB;
+
+-- Upgrade path for installations created before start_date existed.
+ALTER TABLE developments ADD COLUMN IF NOT EXISTS start_date DATE NULL AFTER phase;
 
 CREATE TABLE IF NOT EXISTS tasks (
   id             INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,

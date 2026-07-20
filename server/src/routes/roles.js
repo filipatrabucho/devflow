@@ -5,9 +5,68 @@ import { requirePermission, getRoles, invalidateRoleCache } from '../permissions
 
 const router = Router();
 
+const KEY_RE = /^[a-z][a-z0-9_]{1,29}$/;
+
 router.get('/', requireAuth, async (_req, res) => {
   const roles = await getRoles();
   res.json({ roles });
+});
+
+router.post('/', requireAuth, requirePermission('manageUsers'), async (req, res) => {
+  const { key, label, manageUsers, manageDevelopments, manageTasks, viewAllTasks } = req.body || {};
+
+  if (typeof key !== 'string' || !KEY_RE.test(key)) {
+    return res
+      .status(400)
+      .json({ error: 'Key must be 2-30 lowercase letters, numbers or underscores, starting with a letter' });
+  }
+  if (typeof label !== 'string' || label.trim().length < 2 || label.trim().length > 100) {
+    return res.status(400).json({ error: 'Label must be between 2 and 100 characters' });
+  }
+
+  const [existingRows] = await pool.execute('SELECT id FROM roles WHERE key_name = ?', [key]);
+  if (existingRows[0]) {
+    return res.status(409).json({ error: 'A role with this key already exists' });
+  }
+
+  await pool.execute(
+    `INSERT INTO roles (key_name, label, can_manage_users, can_manage_developments, can_manage_tasks, can_view_all_tasks)
+     VALUES (?, ?, ?, ?, ?, ?)`,
+    [key, label.trim(), !!manageUsers, !!manageDevelopments, !!manageTasks, !!viewAllTasks]
+  );
+
+  invalidateRoleCache();
+  const roles = await getRoles();
+  res.status(201).json({ role: roles.find((r) => r.key === key) });
+});
+
+router.delete('/:key', requireAuth, requirePermission('manageUsers'), async (req, res) => {
+  const { key } = req.params;
+
+  const [existingRows] = await pool.execute('SELECT * FROM roles WHERE key_name = ?', [key]);
+  const existing = existingRows[0];
+  if (!existing) return res.status(404).json({ error: 'Role not found' });
+
+  const [[{ userCount }]] = await pool.query('SELECT COUNT(*) AS userCount FROM users WHERE role = ?', [key]);
+  if (userCount > 0) {
+    return res
+      .status(400)
+      .json({ error: `Cannot delete a role assigned to ${userCount} user(s). Reassign them first.` });
+  }
+
+  if (existing.can_manage_users) {
+    const [[{ managerRoleCount }]] = await pool.query(
+      'SELECT COUNT(*) AS managerRoleCount FROM roles WHERE can_manage_users = 1 AND key_name != ?',
+      [key]
+    );
+    if (managerRoleCount === 0) {
+      return res.status(400).json({ error: 'At least one role must be able to manage users' });
+    }
+  }
+
+  await pool.execute('DELETE FROM roles WHERE key_name = ?', [key]);
+  invalidateRoleCache();
+  res.status(204).end();
 });
 
 router.put('/:key', requireAuth, requirePermission('manageUsers'), async (req, res) => {

@@ -117,6 +117,11 @@ p {
   color: #fff;
 }
 
+.sidebar__nav a:focus-visible {
+  outline: 2px solid #7f96ff;
+  outline-offset: 2px;
+}
+
 .app-shell__main {
   flex: 1;
   display: flex;
@@ -150,6 +155,8 @@ p {
   flex: 1;
   padding: 28px;
   overflow-y: auto;
+  max-width: 1440px;
+  width: 100%;
 }
 
 .page-loading {
@@ -246,6 +253,23 @@ select:focus {
 .form {
   max-width: 480px;
   margin-bottom: 24px;
+}
+
+.field--inline {
+  flex-direction: row;
+  align-items: center;
+  gap: 8px;
+}
+.field--inline input[type='checkbox'] {
+  width: 18px;
+  height: 18px;
+  accent-color: var(--color-primary);
+}
+
+.table__actions {
+  display: flex;
+  gap: 8px;
+  white-space: nowrap;
 }
 
 /* Buttons */
@@ -371,6 +395,14 @@ select:focus {
   color: var(--color-muted);
 }
 
+.card__dates {
+  display: flex;
+  gap: 12px;
+  font-size: 0.76rem;
+  color: var(--color-muted);
+  margin-bottom: 10px;
+}
+
 .profile-card {
   display: flex;
   align-items: center;
@@ -421,6 +453,8 @@ select:focus {
   text-transform: capitalize;
   padding: 3px 10px;
   border-radius: 999px;
+  background: #eceef2;
+  color: #4b5566;
 }
 .role-pill--senior,
 .role-pill--admin {
@@ -492,6 +526,15 @@ select:focus {
   font-size: 0.78rem;
   color: var(--color-success);
   margin-top: 4px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.btn--reopen {
+  font-size: 0.72rem;
+  padding: 2px 8px;
+  border-color: var(--color-border);
 }
 
 /* View toggle */
@@ -522,7 +565,8 @@ select:focus {
 /* Kanban board */
 .kanban {
   display: grid;
-  grid-template-columns: repeat(5, minmax(220px, 1fr));
+  grid-template-columns: repeat(5, minmax(220px, 260px));
+  justify-content: start;
   gap: 14px;
   overflow-x: auto;
   padding-bottom: 8px;

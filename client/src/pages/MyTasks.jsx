@@ -95,7 +95,7 @@ export default function MyTasks() {
                   </Link>
                 </div>
                 <div className="task-row__phase">
-                  {MANAGER_ONLY_TASK_PHASES.has(task.phase) ? (
+                  {task.validatedByName ? (
                     <PhaseBadge phase={task.phase} list={TASK_PHASES} />
                   ) : (
                     <select value={task.phase} onChange={(e) => handlePhaseChange(task, e.target.value)}>
@@ -110,6 +110,14 @@ export default function MyTasks() {
                     <div className="validated-note">
                       Validated by {task.validatedByName} on{' '}
                       {new Date(task.validatedAt).toLocaleDateString()}
+                      {canManageTasks && (
+                        <button
+                          className="btn btn--ghost btn--reopen"
+                          onClick={() => handlePhaseChange(task, 'in_validation')}
+                        >
+                          Reopen
+                        </button>
+                      )}
                     </div>
                   )}
                 </div>

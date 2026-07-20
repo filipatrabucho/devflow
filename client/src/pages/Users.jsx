@@ -13,6 +13,7 @@ export default function Users() {
   const [showForm, setShowForm] = useState(false);
   const [form, setForm] = useState(emptyForm);
   const [saving, setSaving] = useState(false);
+  const [updatingId, setUpdatingId] = useState(null);
 
   async function load() {
     setLoading(true);
@@ -67,6 +68,19 @@ export default function Users() {
       await load();
     } catch (err) {
       setError(err.message);
+    }
+  }
+
+  async function handleRoleChange(id, role) {
+    setError('');
+    setUpdatingId(id);
+    try {
+      const data = await api.put(`/users/${id}`, { role });
+      setUsers((prev) => prev.map((u) => (u.id === id ? data.user : u)));
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setUpdatingId(null);
     }
   }
 
@@ -152,7 +166,17 @@ export default function Users() {
                 <td>{u.name}</td>
                 <td>{u.email}</td>
                 <td>
-                  <span className={`role-pill role-pill--${u.role}`}>{u.roleLabel}</span>
+                  <select
+                    value={u.role}
+                    disabled={updatingId === u.id}
+                    onChange={(e) => handleRoleChange(u.id, e.target.value)}
+                  >
+                    {roles.map((r) => (
+                      <option key={r.key} value={r.key}>
+                        {r.label}
+                      </option>
+                    ))}
+                  </select>
                 </td>
                 <td>
                   <button className="btn btn--ghost btn--danger" onClick={() => handleDelete(u.id)}>

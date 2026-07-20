@@ -11,7 +11,7 @@ export default function Developments() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [showForm, setShowForm] = useState(false);
-  const [form, setForm] = useState({ name: '', description: '', phase: 'waiting_list' });
+  const [form, setForm] = useState({ name: '', description: '', phase: 'waiting_list', startDate: '' });
   const [saving, setSaving] = useState(false);
 
   async function load() {
@@ -36,7 +36,7 @@ export default function Developments() {
     setError('');
     try {
       await api.post('/developments', form);
-      setForm({ name: '', description: '', phase: 'waiting_list' });
+      setForm({ name: '', description: '', phase: 'waiting_list', startDate: '' });
       setShowForm(false);
       await load();
     } catch (err) {
@@ -89,6 +89,14 @@ export default function Developments() {
               ))}
             </select>
           </label>
+          <label className="field">
+            <span>Start date</span>
+            <input
+              type="date"
+              value={form.startDate}
+              onChange={(e) => setForm({ ...form, startDate: e.target.value })}
+            />
+          </label>
           <button className="btn btn--primary" type="submit" disabled={saving}>
             {saving ? 'Creating...' : 'Create development'}
           </button>
@@ -108,6 +116,10 @@ export default function Developments() {
                 <PhaseBadge phase={dev.phase} list={DEVELOPMENT_PHASES} />
               </div>
               {dev.description && <p className="card__description">{dev.description}</p>}
+              <div className="card__dates">
+                <span>Created {new Date(dev.createdAt).toLocaleDateString()}</span>
+                {dev.startDate && <span>Started {new Date(dev.startDate).toLocaleDateString()}</span>}
+              </div>
               <div className="card__footer">
                 <span>{dev.taskCount} task(s)</span>
                 {dev.createdByName && <span>by {dev.createdByName}</span>}
