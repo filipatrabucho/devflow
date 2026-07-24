@@ -6,10 +6,6 @@ build/
 .env
 .env.local
 
-# Uploaded avatars (keep the folder, ignore contents)
-server/uploads/avatars/*
-!server/uploads/avatars/.gitkeep
-
 # Logs
 npm-debug.log*
 *.log

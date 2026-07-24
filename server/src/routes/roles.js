@@ -48,7 +48,10 @@ router.delete('/:key', requireAuth, requirePermission('manageUsers'), async (req
   const existing = existingRows[0];
   if (!existing) return res.status(404).json({ error: 'Role not found' });
 
-  const [[{ userCount }]] = await pool.query('SELECT COUNT(*) AS userCount FROM users WHERE role = ?', [key]);
+  const [[{ userCount }]] = await pool.query(
+    'SELECT COUNT(*) AS "userCount" FROM profiles WHERE role = ?',
+    [key]
+  );
   if (userCount > 0) {
     return res
       .status(400)
@@ -57,10 +60,10 @@ router.delete('/:key', requireAuth, requirePermission('manageUsers'), async (req
 
   if (existing.can_manage_users) {
     const [[{ managerRoleCount }]] = await pool.query(
-      'SELECT COUNT(*) AS managerRoleCount FROM roles WHERE can_manage_users = 1 AND key_name != ?',
+      'SELECT COUNT(*) AS "managerRoleCount" FROM roles WHERE can_manage_users = TRUE AND key_name != ?',
       [key]
     );
-    if (managerRoleCount === 0) {
+    if (Number(managerRoleCount) === 0) {
       return res.status(400).json({ error: 'At least one role must be able to manage users' });
     }
   }

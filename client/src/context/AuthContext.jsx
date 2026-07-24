@@ -1,5 +1,6 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
 import { api } from '../api/client';
+import { supabase } from '../supabaseClient';
 
 const AuthContext = createContext(null);
 
@@ -17,6 +18,13 @@ export function AuthProvider({ children }) {
 
   const refresh = useCallback(async () => {
     try {
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
+      if (!session) {
+        setUser(null);
+        return;
+      }
       const data = await api.get('/auth/me');
       setUser(data.user);
     } catch {
@@ -28,16 +36,24 @@ export function AuthProvider({ children }) {
 
   useEffect(() => {
     refresh();
+
+    const { data: subscription } = supabase.auth.onAuthStateChange(() => {
+      refresh();
+    });
+
+    return () => subscription.subscription.unsubscribe();
   }, [refresh]);
 
   const login = useCallback(async (email, password) => {
-    const data = await api.post('/auth/login', { email, password });
+    const { error } = await supabase.auth.signInWithPassword({ email, password });
+    if (error) throw new Error(error.message);
+    const data = await api.get('/auth/me');
     setUser(data.user);
     return data.user;
   }, []);
 
   const logout = useCallback(async () => {
-    await api.post('/auth/logout');
+    await supabase.auth.signOut();
     setUser(null);
   }, []);
 

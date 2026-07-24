@@ -37,10 +37,6 @@ export default function Users() {
     setError('');
     setSuccess('');
 
-    if (!form.email.toLowerCase().endsWith('@pkf.pt')) {
-      setError('Email must be a @pkf.pt address.');
-      return;
-    }
     if (form.password.length < 8) {
       setError('Password must be at least 8 characters.');
       return;
@@ -114,7 +110,7 @@ export default function Users() {
               type="email"
               value={form.email}
               onChange={(e) => setForm({ ...form, email: e.target.value })}
-              placeholder="name@pkf.pt"
+              placeholder="name@company.com"
               required
             />
           </label>

@@ -1,46 +1,27 @@
-import jwt from 'jsonwebtoken';
+import pool from '../db.js';
+import { supabaseAdmin } from '../supabase.js';
 
-const COOKIE_NAME = process.env.COOKIE_NAME || 'devflow_token';
-const JWT_SECRET = process.env.JWT_SECRET;
-const JWT_EXPIRES_IN = process.env.JWT_EXPIRES_IN || '8h';
-
-if (!JWT_SECRET) {
-  throw new Error('JWT_SECRET must be set in the environment');
-}
-
-export function signToken(user) {
-  return jwt.sign(
-    { sub: user.id, role: user.role },
-    JWT_SECRET,
-    { expiresIn: JWT_EXPIRES_IN }
-  );
-}
-
-export function setAuthCookie(res, token) {
-  res.cookie(COOKIE_NAME, token, {
-    httpOnly: true,
-    secure: process.env.NODE_ENV === 'production',
-    sameSite: 'strict',
-    maxAge: 8 * 60 * 60 * 1000,
-    path: '/',
-  });
-}
-
-export function clearAuthCookie(res) {
-  res.clearCookie(COOKIE_NAME, { path: '/' });
-}
-
-export function requireAuth(req, res, next) {
-  const token = req.cookies?.[COOKIE_NAME];
+export async function requireAuth(req, res, next) {
+  const header = req.headers.authorization || '';
+  const token = header.startsWith('Bearer ') ? header.slice(7) : null;
   if (!token) {
     return res.status(401).json({ error: 'Not authenticated' });
   }
-  try {
-    const payload = jwt.verify(token, JWT_SECRET);
-    req.user = { id: payload.sub, role: payload.role };
-    next();
-  } catch {
+
+  const { data, error } = await supabaseAdmin.auth.getUser(token);
+  if (error || !data?.user) {
     return res.status(401).json({ error: 'Invalid or expired session' });
   }
-}
 
+  const [rows] = await pool.execute(
+    'SELECT id, name, email, role FROM profiles WHERE id = ? LIMIT 1',
+    [data.user.id]
+  );
+  const profile = rows[0];
+  if (!profile) {
+    return res.status(401).json({ error: 'No profile found for this account' });
+  }
+
+  req.user = { id: profile.id, name: profile.name, email: profile.email, role: profile.role };
+  next();
+}

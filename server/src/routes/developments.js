@@ -10,34 +10,34 @@ import { fieldForHeader, mapPhase, cellText, parseFlexibleDate } from '../utils/
 const router = Router();
 
 const TASK_FIELDS = `
-  t.id, t.development_id AS developmentId, t.title, t.description, t.phase,
-  t.assigned_to AS assignedTo, au.name AS assignedToName, au.avatar_path AS assignedToAvatar,
-  t.validated_by AS validatedBy, vu.name AS validatedByName, t.validated_at AS validatedAt,
-  t.created_by AS createdBy, cu.name AS createdByName,
-  t.created_at AS createdAt, t.updated_at AS updatedAt,
-  (SELECT COUNT(*) FROM task_comments tc WHERE tc.task_id = t.id) AS commentCount
+  t.id, t.development_id AS "developmentId", t.title, t.description, t.phase,
+  t.assigned_to AS "assignedTo", au.name AS "assignedToName", au.avatar_path AS "assignedToAvatar",
+  t.validated_by AS "validatedBy", vu.name AS "validatedByName", t.validated_at AS "validatedAt",
+  t.created_by AS "createdBy", cu.name AS "createdByName",
+  t.created_at AS "createdAt", t.updated_at AS "updatedAt",
+  (SELECT COUNT(*) FROM task_comments tc WHERE tc.task_id = t.id) AS "commentCount"
 `;
 
 const TASK_JOINS = `
-  LEFT JOIN users au ON au.id = t.assigned_to
-  LEFT JOIN users vu ON vu.id = t.validated_by
-  LEFT JOIN users cu ON cu.id = t.created_by
+  LEFT JOIN profiles au ON au.id = t.assigned_to
+  LEFT JOIN profiles vu ON vu.id = t.validated_by
+  LEFT JOIN profiles cu ON cu.id = t.created_by
 `;
 
 const DEV_FIELDS = `
-  d.id, d.name, d.description, d.phase, d.start_date AS startDate,
-  d.questions, d.observations, d.requested_at AS requestedAt,
-  d.hours_estimate AS hoursEstimate, d.completion_notes AS completionNotes,
-  d.created_at AS createdAt, d.updated_at AS updatedAt,
-  d.created_by AS createdBy, u.name AS createdByName
+  d.id, d.name, d.description, d.phase, d.start_date AS "startDate",
+  d.questions, d.observations, d.requested_at AS "requestedAt",
+  d.hours_estimate AS "hoursEstimate", d.completion_notes AS "completionNotes",
+  d.created_at AS "createdAt", d.updated_at AS "updatedAt",
+  d.created_by AS "createdBy", u.name AS "createdByName"
 `;
 
 router.get('/', requireAuth, async (_req, res) => {
   const [rows] = await pool.query(`
     SELECT ${DEV_FIELDS},
-      (SELECT COUNT(*) FROM tasks t WHERE t.development_id = d.id) AS taskCount
+      (SELECT COUNT(*) FROM tasks t WHERE t.development_id = d.id) AS "taskCount"
     FROM developments d
-    LEFT JOIN users u ON u.id = d.created_by
+    LEFT JOIN profiles u ON u.id = d.created_by
     ORDER BY d.created_at DESC
   `);
   res.json({ developments: rows });
@@ -48,7 +48,7 @@ router.get('/:id', requireAuth, async (req, res) => {
   if (!Number.isInteger(id)) return res.status(400).json({ error: 'Invalid development id' });
 
   const [rows] = await pool.execute(
-    `SELECT ${DEV_FIELDS} FROM developments d LEFT JOIN users u ON u.id = d.created_by WHERE d.id = ?`,
+    `SELECT ${DEV_FIELDS} FROM developments d LEFT JOIN profiles u ON u.id = d.created_by WHERE d.id = ?`,
     [id]
   );
   if (!rows[0]) return res.status(404).json({ error: 'Development not found' });
@@ -72,7 +72,7 @@ router.post('/', requireAuth, requirePermission('manageDevelopments'), async (re
   );
 
   const [rows] = await pool.execute(
-    `SELECT ${DEV_FIELDS} FROM developments d LEFT JOIN users u ON u.id = d.created_by WHERE d.id = ?`,
+    `SELECT ${DEV_FIELDS} FROM developments d LEFT JOIN profiles u ON u.id = d.created_by WHERE d.id = ?`,
     [result.insertId]
   );
   res.status(201).json({ development: rows[0] });
@@ -231,7 +231,7 @@ router.put('/:id', requireAuth, requirePermission('manageDevelopments'), async (
   );
 
   const [rows] = await pool.execute(
-    `SELECT ${DEV_FIELDS} FROM developments d LEFT JOIN users u ON u.id = d.created_by WHERE d.id = ?`,
+    `SELECT ${DEV_FIELDS} FROM developments d LEFT JOIN profiles u ON u.id = d.created_by WHERE d.id = ?`,
     [id]
   );
   res.json({ development: rows[0] });
@@ -274,8 +274,8 @@ router.post('/:id/tasks', requireAuth, requirePermission('manageTasks'), async (
 
   let assigneeId = null;
   if (assignedTo !== undefined && assignedTo !== null && assignedTo !== '') {
-    assigneeId = Number(assignedTo);
-    const [userRows] = await pool.execute('SELECT id FROM users WHERE id = ?', [assigneeId]);
+    assigneeId = assignedTo;
+    const [userRows] = await pool.execute('SELECT id FROM profiles WHERE id = ?', [assigneeId]);
     if (!userRows[0]) return res.status(400).json({ error: 'Assigned user does not exist' });
   }
 

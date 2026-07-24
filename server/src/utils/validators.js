@@ -1,11 +1,13 @@
-const ALLOWED_EMAIL_DOMAIN = (process.env.ALLOWED_EMAIL_DOMAIN || '@pkf.pt').toLowerCase();
-
 const EMAIL_RE = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
-export function isValidCompanyEmail(email) {
+export function isValidEmail(email) {
   if (typeof email !== 'string') return false;
-  const normalized = email.trim().toLowerCase();
-  return EMAIL_RE.test(normalized) && normalized.endsWith(ALLOWED_EMAIL_DOMAIN);
+  return EMAIL_RE.test(email.trim().toLowerCase());
+}
+
+export function isUuid(value) {
+  return typeof value === 'string' && UUID_RE.test(value);
 }
 
 export function normalizeEmail(email) {

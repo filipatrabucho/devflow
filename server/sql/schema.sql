@@ -1,134 +1,135 @@
--- DevFlow database schema (MySQL / MariaDB)
+-- DevFlow database schema (Postgres / Supabase)
 -- Safe to re-run: every statement is idempotent, so this also upgrades an
 -- existing installation in place (used by `npm run db:init`).
-
-CREATE DATABASE IF NOT EXISTS devflow
-  CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
-
-USE devflow;
+--
+-- Auth is handled by Supabase Auth (auth.users). `profiles` is our own
+-- application-level record for each auth user (name, role, avatar).
 
 -- Roles are configurable at runtime (label + permission flags can be edited
 -- from the app's Roles settings page); the four `key_name` values below are
 -- the fixed set the rest of the app knows about.
 CREATE TABLE IF NOT EXISTS roles (
-  id                      INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+  id                      SERIAL PRIMARY KEY,
   key_name                VARCHAR(30)  NOT NULL UNIQUE,
   label                   VARCHAR(100) NOT NULL,
-  can_manage_users        TINYINT(1)   NOT NULL DEFAULT 0,
-  can_manage_developments TINYINT(1)   NOT NULL DEFAULT 0,
-  can_manage_tasks        TINYINT(1)   NOT NULL DEFAULT 0,
-  can_view_all_tasks      TINYINT(1)   NOT NULL DEFAULT 0,
-  can_validate_tasks      TINYINT(1)   NOT NULL DEFAULT 0,
-  created_at              DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  updated_at              DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
-) ENGINE=InnoDB;
+  can_manage_users        BOOLEAN NOT NULL DEFAULT FALSE,
+  can_manage_developments BOOLEAN NOT NULL DEFAULT FALSE,
+  can_manage_tasks        BOOLEAN NOT NULL DEFAULT FALSE,
+  can_view_all_tasks      BOOLEAN NOT NULL DEFAULT FALSE,
+  can_validate_tasks      BOOLEAN NOT NULL DEFAULT FALSE,
+  created_at              TIMESTAMPTZ NOT NULL DEFAULT now(),
+  updated_at              TIMESTAMPTZ NOT NULL DEFAULT now()
+);
 
--- Upgrade path for installations created before task validation existed.
--- (init.js additionally defaults senior/admin to 1 the first time this runs.)
-ALTER TABLE roles ADD COLUMN IF NOT EXISTS can_validate_tasks TINYINT(1) NOT NULL DEFAULT 0 AFTER can_view_all_tasks;
+ALTER TABLE roles ADD COLUMN IF NOT EXISTS can_validate_tasks BOOLEAN NOT NULL DEFAULT FALSE;
 
-INSERT IGNORE INTO roles
+INSERT INTO roles
   (key_name, label, can_manage_users, can_manage_developments, can_manage_tasks, can_view_all_tasks, can_validate_tasks)
 VALUES
-  ('senior',    'Senior',    1, 1, 1, 1, 1),
-  ('admin',     'Admin',     1, 1, 1, 1, 1),
-  ('partner',   'Partner',   0, 1, 0, 1, 0),
-  ('developer', 'Developer', 0, 0, 0, 0, 0);
+  ('senior',    'Senior',    TRUE,  TRUE,  TRUE,  TRUE,  TRUE),
+  ('admin',     'Admin',     TRUE,  TRUE,  TRUE,  TRUE,  TRUE),
+  ('partner',   'Partner',   FALSE, TRUE,  FALSE, TRUE,  FALSE),
+  ('developer', 'Developer', FALSE, FALSE, FALSE, FALSE, FALSE)
+ON CONFLICT (key_name) DO NOTHING;
 
-CREATE TABLE IF NOT EXISTS users (
-  id            INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+-- One row per Supabase Auth user (auth.users.id). Login/password are
+-- handled entirely by Supabase Auth; this table only holds app profile data.
+CREATE TABLE IF NOT EXISTS profiles (
+  id            UUID PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
   name          VARCHAR(120)  NOT NULL,
   email         VARCHAR(190)  NOT NULL UNIQUE,
-  password_hash VARCHAR(255)  NOT NULL,
   role          VARCHAR(30)   NOT NULL DEFAULT 'developer',
-  avatar_path   VARCHAR(255)  NULL,
-  created_at    DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  updated_at    DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
-) ENGINE=InnoDB;
-
--- Upgrade path for installations created before roles existed (was an ENUM).
-ALTER TABLE users MODIFY COLUMN role VARCHAR(30) NOT NULL DEFAULT 'developer';
+  avatar_path   TEXT NULL,
+  created_at    TIMESTAMPTZ NOT NULL DEFAULT now(),
+  updated_at    TIMESTAMPTZ NOT NULL DEFAULT now()
+);
 
 CREATE TABLE IF NOT EXISTS developments (
-  id               INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+  id               SERIAL PRIMARY KEY,
   name             VARCHAR(160) NOT NULL,
   description      TEXT NULL,
-  phase            ENUM('waiting_list', 'in_search', 'in_development', 'in_production')
-                     NOT NULL DEFAULT 'waiting_list',
+  phase            VARCHAR(30) NOT NULL DEFAULT 'waiting_list'
+                     CHECK (phase IN ('waiting_list', 'in_search', 'in_development', 'in_production')),
   start_date       DATE NULL,
   questions        TEXT NULL,
   observations     TEXT NULL,
   requested_at     DATE NULL,
   hours_estimate   VARCHAR(50) NULL,
   completion_notes VARCHAR(500) NULL,
-  created_by       INT UNSIGNED NULL,
-  created_at       DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  updated_at       DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-  CONSTRAINT fk_developments_created_by
-    FOREIGN KEY (created_by) REFERENCES users(id) ON DELETE SET NULL
-) ENGINE=InnoDB;
+  created_by       UUID NULL REFERENCES profiles(id) ON DELETE SET NULL,
+  created_at       TIMESTAMPTZ NOT NULL DEFAULT now(),
+  updated_at       TIMESTAMPTZ NOT NULL DEFAULT now()
+);
 
--- Upgrade path for installations created before start_date existed.
-ALTER TABLE developments ADD COLUMN IF NOT EXISTS start_date DATE NULL AFTER phase;
-
--- Upgrade path for installations created before the Excel-import fields existed.
-ALTER TABLE developments ADD COLUMN IF NOT EXISTS questions TEXT NULL AFTER start_date;
-ALTER TABLE developments ADD COLUMN IF NOT EXISTS observations TEXT NULL AFTER questions;
-ALTER TABLE developments ADD COLUMN IF NOT EXISTS requested_at DATE NULL AFTER observations;
-ALTER TABLE developments ADD COLUMN IF NOT EXISTS hours_estimate VARCHAR(50) NULL AFTER requested_at;
-ALTER TABLE developments ADD COLUMN IF NOT EXISTS completion_notes VARCHAR(500) NULL AFTER hours_estimate;
+ALTER TABLE developments ADD COLUMN IF NOT EXISTS start_date DATE NULL;
+ALTER TABLE developments ADD COLUMN IF NOT EXISTS questions TEXT NULL;
+ALTER TABLE developments ADD COLUMN IF NOT EXISTS observations TEXT NULL;
+ALTER TABLE developments ADD COLUMN IF NOT EXISTS requested_at DATE NULL;
+ALTER TABLE developments ADD COLUMN IF NOT EXISTS hours_estimate VARCHAR(50) NULL;
+ALTER TABLE developments ADD COLUMN IF NOT EXISTS completion_notes VARCHAR(500) NULL;
 
 CREATE TABLE IF NOT EXISTS tasks (
-  id             INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
-  development_id INT UNSIGNED NOT NULL,
+  id             SERIAL PRIMARY KEY,
+  development_id INTEGER NOT NULL REFERENCES developments(id) ON DELETE CASCADE,
   title          VARCHAR(200) NOT NULL,
   description    TEXT NULL,
-  phase          ENUM('not_started', 'in_progress', 'in_validation', 'approved', 'done')
-                   NOT NULL DEFAULT 'not_started',
-  assigned_to    INT UNSIGNED NULL,
-  validated_by   INT UNSIGNED NULL,
-  validated_at   DATETIME NULL,
-  created_by     INT UNSIGNED NULL,
-  created_at     DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  updated_at     DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-  CONSTRAINT fk_tasks_development
-    FOREIGN KEY (development_id) REFERENCES developments(id) ON DELETE CASCADE,
-  CONSTRAINT fk_tasks_assigned_to
-    FOREIGN KEY (assigned_to) REFERENCES users(id) ON DELETE SET NULL,
-  CONSTRAINT fk_tasks_validated_by
-    FOREIGN KEY (validated_by) REFERENCES users(id) ON DELETE SET NULL,
-  CONSTRAINT fk_tasks_created_by
-    FOREIGN KEY (created_by) REFERENCES users(id) ON DELETE SET NULL
-) ENGINE=InnoDB;
+  phase          VARCHAR(30) NOT NULL DEFAULT 'not_started'
+                   CHECK (phase IN ('not_started', 'in_progress', 'in_validation', 'approved', 'done')),
+  assigned_to    UUID NULL REFERENCES profiles(id) ON DELETE SET NULL,
+  validated_by   UUID NULL REFERENCES profiles(id) ON DELETE SET NULL,
+  validated_at   TIMESTAMPTZ NULL,
+  created_by     UUID NULL REFERENCES profiles(id) ON DELETE SET NULL,
+  created_at     TIMESTAMPTZ NOT NULL DEFAULT now(),
+  updated_at     TIMESTAMPTZ NOT NULL DEFAULT now()
+);
 
--- Upgrade path for installations created before validation tracking existed.
-ALTER TABLE tasks ADD COLUMN IF NOT EXISTS validated_by INT UNSIGNED NULL AFTER assigned_to;
-ALTER TABLE tasks ADD COLUMN IF NOT EXISTS validated_at DATETIME NULL AFTER validated_by;
+ALTER TABLE tasks ADD COLUMN IF NOT EXISTS validated_by UUID NULL REFERENCES profiles(id) ON DELETE SET NULL;
+ALTER TABLE tasks ADD COLUMN IF NOT EXISTS validated_at TIMESTAMPTZ NULL;
 
 CREATE INDEX IF NOT EXISTS idx_tasks_development ON tasks(development_id);
 CREATE INDEX IF NOT EXISTS idx_tasks_assigned_to ON tasks(assigned_to);
 
--- Comment history for a task: manual notes plus an automatic entry (is_system=1)
+-- Comment history for a task: manual notes plus an automatic entry (is_system=true)
 -- every time its phase changes, so there's always a record of why it moved.
 CREATE TABLE IF NOT EXISTS task_comments (
-  id         INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
-  task_id    INT UNSIGNED NOT NULL,
-  author_id  INT UNSIGNED NULL,
+  id         SERIAL PRIMARY KEY,
+  task_id    INTEGER NOT NULL REFERENCES tasks(id) ON DELETE CASCADE,
+  author_id  UUID NULL REFERENCES profiles(id) ON DELETE SET NULL,
   body       TEXT NOT NULL,
-  is_system  TINYINT(1) NOT NULL DEFAULT 0,
+  is_system  BOOLEAN NOT NULL DEFAULT FALSE,
   event_type VARCHAR(20) NULL,
   from_phase VARCHAR(30) NULL,
   to_phase   VARCHAR(30) NULL,
-  created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  CONSTRAINT fk_task_comments_task
-    FOREIGN KEY (task_id) REFERENCES tasks(id) ON DELETE CASCADE,
-  CONSTRAINT fk_task_comments_author
-    FOREIGN KEY (author_id) REFERENCES users(id) ON DELETE SET NULL
-) ENGINE=InnoDB;
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
 
--- Upgrade path for installations created before phase-transition metadata existed.
-ALTER TABLE task_comments ADD COLUMN IF NOT EXISTS event_type VARCHAR(20) NULL AFTER is_system;
-ALTER TABLE task_comments ADD COLUMN IF NOT EXISTS from_phase VARCHAR(30) NULL AFTER event_type;
-ALTER TABLE task_comments ADD COLUMN IF NOT EXISTS to_phase VARCHAR(30) NULL AFTER from_phase;
+ALTER TABLE task_comments ADD COLUMN IF NOT EXISTS event_type VARCHAR(20) NULL;
+ALTER TABLE task_comments ADD COLUMN IF NOT EXISTS from_phase VARCHAR(30) NULL;
+ALTER TABLE task_comments ADD COLUMN IF NOT EXISTS to_phase VARCHAR(30) NULL;
 
 CREATE INDEX IF NOT EXISTS idx_task_comments_task ON task_comments(task_id);
+
+-- `updated_at` auto-touch, since Postgres has no `ON UPDATE CURRENT_TIMESTAMP`.
+CREATE OR REPLACE FUNCTION set_updated_at()
+RETURNS TRIGGER AS $$
+BEGIN
+  NEW.updated_at = now();
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+DROP TRIGGER IF EXISTS trg_roles_updated_at ON roles;
+CREATE TRIGGER trg_roles_updated_at BEFORE UPDATE ON roles
+  FOR EACH ROW EXECUTE FUNCTION set_updated_at();
+
+DROP TRIGGER IF EXISTS trg_profiles_updated_at ON profiles;
+CREATE TRIGGER trg_profiles_updated_at BEFORE UPDATE ON profiles
+  FOR EACH ROW EXECUTE FUNCTION set_updated_at();
+
+DROP TRIGGER IF EXISTS trg_developments_updated_at ON developments;
+CREATE TRIGGER trg_developments_updated_at BEFORE UPDATE ON developments
+  FOR EACH ROW EXECUTE FUNCTION set_updated_at();
+
+DROP TRIGGER IF EXISTS trg_tasks_updated_at ON tasks;
+CREATE TRIGGER trg_tasks_updated_at BEFORE UPDATE ON tasks
+  FOR EACH ROW EXECUTE FUNCTION set_updated_at();

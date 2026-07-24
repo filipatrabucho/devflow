@@ -14,12 +14,6 @@ export default function Login() {
   async function handleSubmit(e) {
     e.preventDefault();
     setError('');
-
-    if (!email.toLowerCase().endsWith('@pkf.pt')) {
-      setError('Please use your @pkf.pt email address.');
-      return;
-    }
-
     setSubmitting(true);
     try {
       await login(email, password);
@@ -50,7 +44,7 @@ export default function Login() {
             type="email"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
-            placeholder="name@pkf.pt"
+            placeholder="name@company.com"
             autoComplete="username"
             required
           />

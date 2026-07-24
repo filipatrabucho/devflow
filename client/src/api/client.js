@@ -1,3 +1,5 @@
+import { supabase } from '../supabaseClient';
+
 const BASE_URL = '/api';
 
 async function request(path, { method = 'GET', body, isFormData = false } = {}) {
@@ -9,11 +11,17 @@ async function request(path, { method = 'GET', body, isFormData = false } = {}) 
     payload = JSON.stringify(body);
   }
 
+  const {
+    data: { session },
+  } = await supabase.auth.getSession();
+  if (session?.access_token) {
+    headers.Authorization = `Bearer ${session.access_token}`;
+  }
+
   const response = await fetch(`${BASE_URL}${path}`, {
     method,
     headers,
     body: payload,
-    credentials: 'include',
   });
 
   if (response.status === 204) return null;

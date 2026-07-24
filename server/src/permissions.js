@@ -21,7 +21,7 @@ export async function getRoles() {
   if (cache && now - cachedAt < CACHE_TTL_MS) return cache;
 
   const [rows] = await pool.query(
-    `SELECT key_name AS keyName, label, can_manage_users, can_manage_developments,
+    `SELECT key_name AS "keyName", label, can_manage_users, can_manage_developments,
             can_manage_tasks, can_view_all_tasks, can_validate_tasks
      FROM roles ORDER BY id ASC`
   );

@@ -11,9 +11,9 @@ const DEVELOPER_ALLOWED_PHASES = new Set(['not_started', 'in_progress', 'in_vali
 const VALIDATED_PHASES = new Set(['approved', 'done']);
 
 const COMMENT_FIELDS = `
-  c.id, c.task_id AS taskId, c.body, c.is_system AS isSystem, c.event_type AS eventType,
-  c.from_phase AS fromPhase, c.to_phase AS toPhase, c.created_at AS createdAt,
-  c.author_id AS authorId, u.name AS authorName, u.avatar_path AS authorAvatar
+  c.id, c.task_id AS "taskId", c.body, c.is_system AS "isSystem", c.event_type AS "eventType",
+  c.from_phase AS "fromPhase", c.to_phase AS "toPhase", c.created_at AS "createdAt",
+  c.author_id AS "authorId", u.name AS "authorName", u.avatar_path AS "authorAvatar"
 `;
 
 function classifyTransition(fromPhase, toPhase) {
@@ -34,7 +34,7 @@ function classifyTransition(fromPhase, toPhase) {
 
 router.get('/', requireAuth, requirePermission('viewAllTasks'), async (_req, res) => {
   const [rows] = await pool.query(
-    `SELECT ${TASK_FIELDS}, d.name AS developmentName FROM tasks t
+    `SELECT ${TASK_FIELDS}, d.name AS "developmentName" FROM tasks t
      ${TASK_JOINS}
      LEFT JOIN developments d ON d.id = t.development_id
      ORDER BY t.updated_at DESC`
@@ -44,7 +44,7 @@ router.get('/', requireAuth, requirePermission('viewAllTasks'), async (_req, res
 
 router.get('/mine', requireAuth, async (req, res) => {
   const [rows] = await pool.execute(
-    `SELECT ${TASK_FIELDS}, d.name AS developmentName FROM tasks t
+    `SELECT ${TASK_FIELDS}, d.name AS "developmentName" FROM tasks t
      ${TASK_JOINS}
      LEFT JOIN developments d ON d.id = t.development_id
      WHERE t.assigned_to = ?
@@ -56,7 +56,7 @@ router.get('/mine', requireAuth, async (req, res) => {
 
 router.get('/pending-validation', requireAuth, requirePermission('validateTasks'), async (_req, res) => {
   const [rows] = await pool.query(
-    `SELECT ${TASK_FIELDS}, d.name AS developmentName FROM tasks t
+    `SELECT ${TASK_FIELDS}, d.name AS "developmentName" FROM tasks t
      ${TASK_JOINS}
      LEFT JOIN developments d ON d.id = t.development_id
      WHERE t.phase = 'in_validation'
@@ -71,7 +71,7 @@ router.get('/:id/comments', requireAuth, async (req, res) => {
 
   const [rows] = await pool.execute(
     `SELECT ${COMMENT_FIELDS} FROM task_comments c
-     LEFT JOIN users u ON u.id = c.author_id
+     LEFT JOIN profiles u ON u.id = c.author_id
      WHERE c.task_id = ? ORDER BY c.created_at ASC`,
     [id]
   );
@@ -91,12 +91,12 @@ router.post('/:id/comments', requireAuth, async (req, res) => {
   if (!taskRows[0]) return res.status(404).json({ error: 'Task not found' });
 
   const [result] = await pool.execute(
-    'INSERT INTO task_comments (task_id, author_id, body, is_system) VALUES (?, ?, ?, 0)',
+    'INSERT INTO task_comments (task_id, author_id, body, is_system) VALUES (?, ?, ?, FALSE)',
     [id, req.user.id, body.trim()]
   );
 
   const [rows] = await pool.execute(
-    `SELECT ${COMMENT_FIELDS} FROM task_comments c LEFT JOIN users u ON u.id = c.author_id WHERE c.id = ?`,
+    `SELECT ${COMMENT_FIELDS} FROM task_comments c LEFT JOIN profiles u ON u.id = c.author_id WHERE c.id = ?`,
     [result.insertId]
   );
   res.status(201).json({ comment: rows[0] });
@@ -142,10 +142,9 @@ router.put('/:id', requireAuth, async (req, res) => {
       if (assignedTo === null || assignedTo === '') {
         nextAssignee = null;
       } else {
-        const assigneeId = Number(assignedTo);
-        const [userRows] = await pool.execute('SELECT id FROM users WHERE id = ?', [assigneeId]);
+        const [userRows] = await pool.execute('SELECT id FROM profiles WHERE id = ?', [assignedTo]);
         if (!userRows[0]) return res.status(400).json({ error: 'Assigned user does not exist' });
-        nextAssignee = assigneeId;
+        nextAssignee = assignedTo;
       }
     }
   } else if (assignedTo !== undefined || title !== undefined || description !== undefined) {
@@ -183,7 +182,7 @@ router.put('/:id', requireAuth, async (req, res) => {
     const noteBody = comment && String(comment).trim() ? String(comment).trim() : '';
     await pool.execute(
       `INSERT INTO task_comments (task_id, author_id, body, is_system, event_type, from_phase, to_phase)
-       VALUES (?, ?, ?, 1, ?, ?, ?)`,
+       VALUES (?, ?, ?, TRUE, ?, ?, ?)`,
       [id, req.user.id, noteBody, eventType, task.phase, nextPhase]
     );
   }

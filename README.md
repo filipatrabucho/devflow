@@ -28,7 +28,7 @@ accounts and assign tasks; developers track their work through its phases.
   skipped with a warning rather than failing the row. Rows without a `Tema` are
   silently skipped. The import summary lists what was created and what warnings
   or skips happened, per row.
-- Login is email + password. Only `@pkf.pt` addresses are accepted.
+- Login is email + password (handled by Supabase Auth).
 - There is no public sign-up — accounts are created from inside the app (Users page),
   and an existing user's role can be changed at any time from the same page.
 
@@ -65,84 +65,58 @@ fixed set.
 ## Stack
 
 - **Frontend**: React 19 + Vite 8 + React Router 7, plain CSS (no UI framework)
-- **Backend**: Node.js + Express 5, MySQL2, JWT auth in an httpOnly cookie, bcrypt password hashing
-- **Database**: MySQL / MariaDB
+- **Backend**: Node.js + Express 5, deployable as a single Netlify Function (`serverless-http`)
+- **Database**: Postgres (Supabase)
+- **Auth**: Supabase Auth (email/password); the browser talks to Supabase directly
+  for sign-in/out, then sends the resulting access token as a Bearer header to
+  our own API for everything else
+- **Storage**: Supabase Storage (avatar uploads)
 
 ## Project layout
 
 ```
-server/   Express API (auth, users, developments, tasks, avatar uploads)
-client/   React app (Vite)
+server/             Express API (users, developments, tasks, roles) — also runs locally
+netlify/functions/   Netlify Function wrapper around the same Express app
+client/              React app (Vite)
+netlify.toml         Netlify build + redirect config
 ```
 
-## 1. Database setup
+## Local development
 
-Requires a running MySQL or MariaDB server.
+See [`DEPLOYMENT.md`](./DEPLOYMENT.md) for the full walkthrough (creating the
+Supabase project, running the schema, setting up Netlify). Short version once
+you have a Supabase project:
 
 ```bash
 cd server
-cp .env.example .env
-```
-
-Edit `.env`:
-- Set `DB_USER` / `DB_PASSWORD` to a MySQL/MariaDB user that can create databases
-  (or pre-create the `devflow` database/user yourself and adjust `DB_NAME`).
-- Set a long random `JWT_SECRET`.
-- Set `BOOTSTRAP_SENIOR_EMAIL` / `BOOTSTRAP_SENIOR_PASSWORD` — this is the **first**
-  account created for you, since new accounts can otherwise only be created from
-  inside the app. The email must end with `@pkf.pt`.
-
-Then create the schema and bootstrap the first senior user:
-
-```bash
+cp .env.example .env   # fill in SUPABASE_URL, SUPABASE_*_KEY, DATABASE_URL
 npm install
-npm run db:init
+npm run db:init         # applies schema.sql, optionally creates a bootstrap senior user
+npm run dev              # http://localhost:4000
+
+cd ../client
+cp .env.example .env    # fill in VITE_SUPABASE_URL, VITE_SUPABASE_ANON_KEY
+npm install
+npm run dev               # http://localhost:5173
 ```
 
 Re-running `db:init` is safe: every statement in `schema.sql` is idempotent, so
-it also upgrades an existing installation in place (adding the `roles` table,
-new columns, etc.) without touching your existing data, and only creates the
-bootstrap user if the `users` table is empty.
-
-## 2. Run the API
-
-```bash
-cd server
-npm run dev      # http://localhost:4000
-```
-
-## 3. Run the frontend
-
-```bash
-cd client
-npm install
-npm run dev       # http://localhost:5173
-```
-
-The Vite dev server proxies `/api` and `/uploads` to `http://localhost:4000`, so
-just open `http://localhost:5173` and log in with the bootstrap senior account.
+it also upgrades an existing installation in place without touching existing
+data, and only creates the bootstrap user if the `profiles` table is empty.
 
 ## Security notes
 
-- Passwords are hashed with bcrypt (cost 12); never stored or logged in plain text.
-- Sessions use a JWT in an `httpOnly`, `SameSite=Strict` cookie (not readable by
-  JS, and not sent on cross-site requests) — set `secure: true` automatically
-  in production (requires HTTPS).
-- The login endpoint is rate-limited; all `/api` routes have a general rate limit too.
+- Passwords, sessions and tokens are entirely managed by Supabase Auth; the API
+  never sees or stores a password.
+- The API verifies every request's Supabase access token server-side
+  (`supabase.auth.getUser`) before trusting `req.user`.
 - All SQL is parameterized (no string-built queries).
 - Avatar uploads are limited to PNG/JPEG/WEBP, capped at 2MB, and stored under a
-  randomly generated filename.
+  randomly generated object name in a private-by-default Supabase Storage bucket.
 - Every write endpoint re-validates the caller's role/ownership server-side —
   the UI hides controls the user shouldn't see, but permissions are enforced by
   the API regardless of what the client sends.
 
-## Building for production
+## Deploying (Netlify + Supabase)
 
-```bash
-cd client
-npm run build      # outputs client/dist — serve behind your web server / reverse proxy
-```
-
-Serve `client/dist` from your web server (or any static host) and point it at the
-API (set `CLIENT_ORIGIN` in the server `.env` to that origin, and run the API
-behind HTTPS with `NODE_ENV=production` so the auth cookie gets `secure: true`).
+See [`DEPLOYMENT.md`](./DEPLOYMENT.md) for step-by-step instructions.
