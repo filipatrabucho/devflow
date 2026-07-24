@@ -1,11 +1,13 @@
 :root {
-  --color-bg: #f5f6f8;
+  --color-bg: #f5f5f7;
   --color-surface: #ffffff;
-  --color-border: #e2e5ea;
-  --color-text: #1c222b;
-  --color-muted: #6b7280;
-  --color-primary: #2451ff;
-  --color-primary-hover: #1739cc;
+  --color-border: #dddee2;
+  --color-text: #15161b;
+  --color-muted: #626369;
+  --color-primary: #552f86;
+  --color-primary-hover: #40166d;
+  --color-primary-light: #9769dc;
+  --color-dark: #101118;
   --color-danger: #d7373f;
   --color-success: #1a8a4a;
   --radius: 8px;
@@ -64,8 +66,8 @@ p {
 .sidebar {
   width: 220px;
   flex-shrink: 0;
-  background: #12172b;
-  color: #dfe3f0;
+  background: var(--color-dark);
+  color: #dfdfe6;
   display: flex;
   flex-direction: column;
   padding: 20px 16px;
@@ -75,22 +77,19 @@ p {
   display: flex;
   align-items: center;
   gap: 10px;
-  font-weight: 700;
-  font-size: 1.1rem;
   margin-bottom: 28px;
 }
 
-.sidebar__logo {
-  background: var(--color-primary);
-  color: white;
-  border-radius: 6px;
-  width: 30px;
-  height: 30px;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 0.85rem;
+.brand-wordmark {
+  font-family: 'Outfit', 'Segoe UI', sans-serif;
   font-weight: 700;
+  letter-spacing: -0.02em;
+  font-size: 1.2rem;
+}
+
+.sidebar__logo {
+  flex-shrink: 0;
+  display: inline-flex;
 }
 
 .sidebar__nav {
@@ -118,7 +117,7 @@ p {
 }
 
 .sidebar__nav a:focus-visible {
-  outline: 2px solid #7f96ff;
+  outline: 2px solid var(--color-primary-light);
   outline-offset: 2px;
 }
 
@@ -171,7 +170,7 @@ p {
   display: flex;
   align-items: center;
   justify-content: center;
-  background: linear-gradient(160deg, #12172b, #1c2440 60%, #12172b);
+  background: linear-gradient(160deg, var(--color-dark), #221b2f 60%, var(--color-dark));
   padding: 20px;
 }
 
@@ -477,7 +476,7 @@ select:focus {
 }
 .role-pill--senior,
 .role-pill--admin {
-  background: #2a1b70;
+  background: var(--color-primary);
   color: #fff;
 }
 .role-pill--partner {
@@ -836,7 +835,7 @@ select:focus {
 }
 .kanban__column--over {
   border-color: var(--color-primary);
-  background: #e4eaff;
+  background: #ece3f7;
 }
 
 .kanban__column-header {

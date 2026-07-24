@@ -1,6 +1,7 @@
 import { NavLink, Outlet, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import Avatar from './Avatar';
+import Logo from './Logo';
 
 export default function Layout() {
   const { user, logout, can } = useAuth();
@@ -15,8 +16,10 @@ export default function Layout() {
     <div className="app-shell">
       <aside className="sidebar">
         <div className="sidebar__brand">
-          <span className="sidebar__logo">DF</span>
-          <span>DevFlow</span>
+          <span className="sidebar__logo">
+            <Logo size={30} />
+          </span>
+          <span className="brand-wordmark">devflow</span>
         </div>
         <nav className="sidebar__nav">
           <NavLink to="/" end>

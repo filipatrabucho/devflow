@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import Logo from '../components/Logo';
 
 export default function Login() {
   const { login } = useAuth();
@@ -34,8 +35,10 @@ export default function Login() {
     <div className="auth-page">
       <form className="auth-card" onSubmit={handleSubmit}>
         <div className="auth-card__brand">
-          <span className="sidebar__logo">DF</span>
-          <h1>DevFlow</h1>
+          <span className="sidebar__logo">
+            <Logo size={34} />
+          </span>
+          <h1 className="brand-wordmark">devflow</h1>
         </div>
         <p className="auth-card__subtitle">Sign in with your company account</p>
 
