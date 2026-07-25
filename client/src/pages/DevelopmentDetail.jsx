@@ -6,6 +6,7 @@ import { DEVELOPMENT_PHASES, TASK_PHASES, MANAGER_ONLY_TASK_PHASES } from '../co
 import PhaseBadge from '../components/PhaseBadge';
 import Avatar from '../components/Avatar';
 import TaskComments from '../components/TaskComments';
+import Modal from '../components/Modal';
 
 export default function DevelopmentDetail() {
   const { id } = useParams();
@@ -203,200 +204,204 @@ export default function DevelopmentDetail() {
 
       {error && <div className="alert alert--error">{error}</div>}
 
-      {editingDev ? (
-        <form className="card form" onSubmit={handleSaveDev}>
-          <label className="field">
-            <span>Name</span>
-            <input
-              value={devForm.name}
-              onChange={(e) => setDevForm({ ...devForm, name: e.target.value })}
-              required
-              minLength={2}
-              maxLength={160}
-            />
-          </label>
-          <label className="field">
-            <span>Description</span>
-            <textarea
-              value={devForm.description}
-              onChange={(e) => setDevForm({ ...devForm, description: e.target.value })}
-              rows={3}
-            />
-          </label>
-          <label className="field">
-            <span>Start date</span>
-            <input
-              type="date"
-              value={devForm.startDate}
-              onChange={(e) => setDevForm({ ...devForm, startDate: e.target.value })}
-            />
-          </label>
-          <label className="field">
-            <span>Questions</span>
-            <textarea
-              value={devForm.questions}
-              onChange={(e) => setDevForm({ ...devForm, questions: e.target.value })}
-              rows={3}
-            />
-          </label>
-          <label className="field">
-            <span>Observations</span>
-            <textarea
-              value={devForm.observations}
-              onChange={(e) => setDevForm({ ...devForm, observations: e.target.value })}
-              rows={3}
-            />
-          </label>
-          <label className="field">
-            <span>Requested date</span>
-            <input
-              type="date"
-              value={devForm.requestedAt}
-              onChange={(e) => setDevForm({ ...devForm, requestedAt: e.target.value })}
-            />
-          </label>
-          <label className="field">
-            <span>Hours estimate</span>
-            <input
-              value={devForm.hoursEstimate}
-              onChange={(e) => setDevForm({ ...devForm, hoursEstimate: e.target.value })}
-              maxLength={50}
-              placeholder="e.g. > 40h"
-            />
-          </label>
-          <label className="field">
-            <span>Completion notes</span>
-            <textarea
-              value={devForm.completionNotes}
-              onChange={(e) => setDevForm({ ...devForm, completionNotes: e.target.value })}
-              rows={2}
-              maxLength={500}
-            />
-          </label>
-          <div className="table__actions">
-            <button className="btn btn--primary" type="submit" disabled={savingDev}>
-              {savingDev ? 'Saving...' : 'Save'}
-            </button>
-            <button type="button" className="btn btn--ghost" onClick={() => setEditingDev(false)}>
-              Cancel
-            </button>
+      <div className="page-header">
+        <div>
+          <h1>{development.name}</h1>
+          {development.description && <p className="muted">{development.description}</p>}
+          <div className="card__dates">
+            <span>Created {new Date(development.createdAt).toLocaleDateString()}</span>
+            {development.startDate && (
+              <span>Started {new Date(development.startDate).toLocaleDateString()}</span>
+            )}
+            {development.requestedAt && (
+              <span>Requested {new Date(development.requestedAt).toLocaleDateString()}</span>
+            )}
+            {development.hoursEstimate && <span>Hours: {development.hoursEstimate}</span>}
           </div>
-        </form>
-      ) : (
-        <div className="page-header">
-          <div>
-            <h1>{development.name}</h1>
-            {development.description && <p className="muted">{development.description}</p>}
-            <div className="card__dates">
-              <span>Created {new Date(development.createdAt).toLocaleDateString()}</span>
-              {development.startDate && (
-                <span>Started {new Date(development.startDate).toLocaleDateString()}</span>
+          {(development.questions || development.observations || development.completionNotes) && (
+            <div className="dev-extra">
+              {development.questions && (
+                <div>
+                  <span className="modal__fact-label">Questions</span>
+                  <p>{development.questions}</p>
+                </div>
               )}
-              {development.requestedAt && (
-                <span>Requested {new Date(development.requestedAt).toLocaleDateString()}</span>
+              {development.observations && (
+                <div>
+                  <span className="modal__fact-label">Observations</span>
+                  <p>{development.observations}</p>
+                </div>
               )}
-              {development.hoursEstimate && <span>Hours: {development.hoursEstimate}</span>}
+              {development.completionNotes && (
+                <div>
+                  <span className="modal__fact-label">Completion notes</span>
+                  <p>{development.completionNotes}</p>
+                </div>
+              )}
             </div>
-            {(development.questions || development.observations || development.completionNotes) && (
-              <div className="dev-extra">
-                {development.questions && (
-                  <div>
-                    <span className="modal__fact-label">Questions</span>
-                    <p>{development.questions}</p>
-                  </div>
-                )}
-                {development.observations && (
-                  <div>
-                    <span className="modal__fact-label">Observations</span>
-                    <p>{development.observations}</p>
-                  </div>
-                )}
-                {development.completionNotes && (
-                  <div>
-                    <span className="modal__fact-label">Completion notes</span>
-                    <p>{development.completionNotes}</p>
-                  </div>
-                )}
-              </div>
-            )}
-          </div>
-          <div className="table__actions">
-            {canManageDevelopments ? (
-              <select
-                className="select--phase"
-                value={development.phase}
-                onChange={(e) => handlePhaseChange(e.target.value)}
-              >
-                {DEVELOPMENT_PHASES.map((p) => (
-                  <option key={p.value} value={p.value}>
-                    {p.label}
-                  </option>
-                ))}
-              </select>
-            ) : (
-              <PhaseBadge phase={development.phase} list={DEVELOPMENT_PHASES} />
-            )}
-            {canManageDevelopments && (
-              <>
-                <button className="btn btn--secondary" onClick={startEditDev}>
-                  Edit
-                </button>
-                <button className="btn btn--ghost btn--danger" onClick={handleDeleteDev}>
-                  Delete
-                </button>
-              </>
-            )}
-          </div>
+          )}
         </div>
+        <div className="table__actions">
+          {canManageDevelopments ? (
+            <select
+              className="select--phase"
+              value={development.phase}
+              onChange={(e) => handlePhaseChange(e.target.value)}
+            >
+              {DEVELOPMENT_PHASES.map((p) => (
+                <option key={p.value} value={p.value}>
+                  {p.label}
+                </option>
+              ))}
+            </select>
+          ) : (
+            <PhaseBadge phase={development.phase} list={DEVELOPMENT_PHASES} />
+          )}
+          {canManageDevelopments && (
+            <>
+              <button className="btn btn--secondary" onClick={startEditDev}>
+                Edit
+              </button>
+              <button className="btn btn--ghost btn--danger" onClick={handleDeleteDev}>
+                Delete
+              </button>
+            </>
+          )}
+        </div>
+      </div>
+
+      {editingDev && (
+        <Modal title="Edit Development" onClose={() => setEditingDev(false)}>
+          <form className="form" onSubmit={handleSaveDev}>
+            <label className="field">
+              <span>Name</span>
+              <input
+                value={devForm.name}
+                onChange={(e) => setDevForm({ ...devForm, name: e.target.value })}
+                required
+                minLength={2}
+                maxLength={160}
+              />
+            </label>
+            <label className="field">
+              <span>Description</span>
+              <textarea
+                value={devForm.description}
+                onChange={(e) => setDevForm({ ...devForm, description: e.target.value })}
+                rows={3}
+              />
+            </label>
+            <label className="field">
+              <span>Start date</span>
+              <input
+                type="date"
+                value={devForm.startDate}
+                onChange={(e) => setDevForm({ ...devForm, startDate: e.target.value })}
+              />
+            </label>
+            <label className="field">
+              <span>Questions</span>
+              <textarea
+                value={devForm.questions}
+                onChange={(e) => setDevForm({ ...devForm, questions: e.target.value })}
+                rows={3}
+              />
+            </label>
+            <label className="field">
+              <span>Observations</span>
+              <textarea
+                value={devForm.observations}
+                onChange={(e) => setDevForm({ ...devForm, observations: e.target.value })}
+                rows={3}
+              />
+            </label>
+            <label className="field">
+              <span>Requested date</span>
+              <input
+                type="date"
+                value={devForm.requestedAt}
+                onChange={(e) => setDevForm({ ...devForm, requestedAt: e.target.value })}
+              />
+            </label>
+            <label className="field">
+              <span>Hours estimate</span>
+              <input
+                value={devForm.hoursEstimate}
+                onChange={(e) => setDevForm({ ...devForm, hoursEstimate: e.target.value })}
+                maxLength={50}
+                placeholder="e.g. > 40h"
+              />
+            </label>
+            <label className="field">
+              <span>Completion notes</span>
+              <textarea
+                value={devForm.completionNotes}
+                onChange={(e) => setDevForm({ ...devForm, completionNotes: e.target.value })}
+                rows={2}
+                maxLength={500}
+              />
+            </label>
+            <div className="table__actions">
+              <button className="btn btn--primary" type="submit" disabled={savingDev}>
+                {savingDev ? 'Saving...' : 'Save'}
+              </button>
+              <button type="button" className="btn btn--ghost" onClick={() => setEditingDev(false)}>
+                Cancel
+              </button>
+            </div>
+          </form>
+        </Modal>
       )}
 
       <div className="page-header">
         <h2>Tasks</h2>
         {canManageTasks && (
-          <button className="btn btn--primary" onClick={() => setShowForm((v) => !v)}>
-            {showForm ? 'Cancel' : 'New Task'}
+          <button className="btn btn--primary" onClick={() => setShowForm(true)}>
+            New Task
           </button>
         )}
       </div>
 
       {showForm && (
-        <form className="card form" onSubmit={handleCreateTask}>
-          <label className="field">
-            <span>Title</span>
-            <input
-              value={form.title}
-              onChange={(e) => setForm({ ...form, title: e.target.value })}
-              required
-              minLength={2}
-              maxLength={200}
-            />
-          </label>
-          <label className="field">
-            <span>Description</span>
-            <textarea
-              value={form.description}
-              onChange={(e) => setForm({ ...form, description: e.target.value })}
-              rows={3}
-            />
-          </label>
-          <label className="field">
-            <span>Assign to</span>
-            <select
-              value={form.assignedTo}
-              onChange={(e) => setForm({ ...form, assignedTo: e.target.value })}
-            >
-              <option value="">Unassigned</option>
-              {users.map((u) => (
-                <option key={u.id} value={u.id}>
-                  {u.name}
-                </option>
-              ))}
-            </select>
-          </label>
-          <button className="btn btn--primary" type="submit" disabled={saving}>
-            {saving ? 'Creating...' : 'Create task'}
-          </button>
-        </form>
+        <Modal title="New Task" onClose={() => setShowForm(false)}>
+          <form className="form" onSubmit={handleCreateTask}>
+            <label className="field">
+              <span>Title</span>
+              <input
+                value={form.title}
+                onChange={(e) => setForm({ ...form, title: e.target.value })}
+                required
+                minLength={2}
+                maxLength={200}
+              />
+            </label>
+            <label className="field">
+              <span>Description</span>
+              <textarea
+                value={form.description}
+                onChange={(e) => setForm({ ...form, description: e.target.value })}
+                rows={3}
+              />
+            </label>
+            <label className="field">
+              <span>Assign to</span>
+              <select
+                value={form.assignedTo}
+                onChange={(e) => setForm({ ...form, assignedTo: e.target.value })}
+              >
+                <option value="">Unassigned</option>
+                {users.map((u) => (
+                  <option key={u.id} value={u.id}>
+                    {u.name}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <button className="btn btn--primary" type="submit" disabled={saving}>
+              {saving ? 'Creating...' : 'Create task'}
+            </button>
+          </form>
+        </Modal>
       )}
 
       {tasks.length === 0 ? (
@@ -410,39 +415,6 @@ export default function DevelopmentDetail() {
               canManageTasks || canValidate
                 ? TASK_PHASES
                 : TASK_PHASES.filter((p) => !MANAGER_ONLY_TASK_PHASES.has(p.value) || p.value === task.phase);
-
-            if (editingTaskId === task.id) {
-              return (
-                <form className="card form task-edit-form" key={task.id} onSubmit={(e) => handleSaveTask(e, task.id)}>
-                  <label className="field">
-                    <span>Title</span>
-                    <input
-                      value={taskForm.title}
-                      onChange={(e) => setTaskForm({ ...taskForm, title: e.target.value })}
-                      required
-                      minLength={2}
-                      maxLength={200}
-                    />
-                  </label>
-                  <label className="field">
-                    <span>Description</span>
-                    <textarea
-                      value={taskForm.description}
-                      onChange={(e) => setTaskForm({ ...taskForm, description: e.target.value })}
-                      rows={2}
-                    />
-                  </label>
-                  <div className="table__actions">
-                    <button className="btn btn--primary" type="submit">
-                      Save
-                    </button>
-                    <button type="button" className="btn btn--ghost" onClick={() => setEditingTaskId(null)}>
-                      Cancel
-                    </button>
-                  </div>
-                </form>
-              );
-            }
 
             return (
               <div className="task-card" key={task.id}>
@@ -529,6 +501,39 @@ export default function DevelopmentDetail() {
             );
           })}
         </div>
+      )}
+
+      {editingTaskId !== null && (
+        <Modal title="Edit Task" onClose={() => setEditingTaskId(null)}>
+          <form className="form" onSubmit={(e) => handleSaveTask(e, editingTaskId)}>
+            <label className="field">
+              <span>Title</span>
+              <input
+                value={taskForm.title}
+                onChange={(e) => setTaskForm({ ...taskForm, title: e.target.value })}
+                required
+                minLength={2}
+                maxLength={200}
+              />
+            </label>
+            <label className="field">
+              <span>Description</span>
+              <textarea
+                value={taskForm.description}
+                onChange={(e) => setTaskForm({ ...taskForm, description: e.target.value })}
+                rows={3}
+              />
+            </label>
+            <div className="table__actions">
+              <button className="btn btn--primary" type="submit">
+                Save
+              </button>
+              <button type="button" className="btn btn--ghost" onClick={() => setEditingTaskId(null)}>
+                Cancel
+              </button>
+            </div>
+          </form>
+        </Modal>
       )}
     </div>
   );
