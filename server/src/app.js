@@ -18,6 +18,27 @@ export function createApp() {
   app.set('trust proxy', 1);
   app.use(helmet());
   app.use(cors({ origin: CLIENT_ORIGIN }));
+
+  // Under serverless-http (Netlify Functions), the request arrives with
+  // `req.body` already pre-set to the raw request Buffer and `req.complete`
+  // forced to `true`. Express's body-parser (express.json()) checks
+  // `onFinished.isFinished(req)` before reading the stream, sees it already
+  // "finished", and silently skips parsing — leaving req.body as that raw
+  // Buffer instead of the parsed object. Parse it ourselves in that case;
+  // this is a no-op in local dev, where req.body isn't pre-set and
+  // express.json() below does the real parsing off the live stream.
+  app.use((req, res, next) => {
+    if (!Buffer.isBuffer(req.body)) return next();
+    const contentType = req.headers['content-type'] || '';
+    if (!contentType.includes('application/json')) return next();
+    const raw = req.body.toString('utf8').trim();
+    try {
+      req.body = raw ? JSON.parse(raw) : {};
+    } catch {
+      return res.status(400).json({ error: 'Invalid JSON body' });
+    }
+    next();
+  });
   app.use(express.json({ limit: '100kb' }));
 
   app.use(
