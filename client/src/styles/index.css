@@ -1411,3 +1411,124 @@ select:focus {
   text-align: center;
   padding: 4px;
 }
+
+/* Scrollable wrapper for plain <table> elements — a fixed-column-width HTML
+   table would otherwise force the entire page (sidebar included) to scroll
+   horizontally on a narrow screen instead of just the table itself. */
+.table-wrap {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+.hamburger-btn {
+  display: none;
+  width: 34px;
+  height: 34px;
+  border-radius: 8px;
+  border: none;
+  background: transparent;
+  color: var(--color-text);
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+.hamburger-btn:hover {
+  background: var(--color-bg);
+}
+
+.sidebar-backdrop {
+  display: none;
+}
+
+/* Tablet: reclaim a bit of width, but the sidebar's own manual collapse
+   toggle already handles narrower viewports reasonably well above this. */
+@media (max-width: 1024px) {
+  .content {
+    padding: 20px;
+  }
+}
+
+/* Phone: the fixed-width sidebar becomes an off-canvas drawer toggled by the
+   hamburger button, and rows that assumed desktop-width space (task rows,
+   the topbar) wrap or shed non-essential content instead of overflowing. */
+@media (max-width: 640px) {
+  .sidebar {
+    position: fixed;
+    top: 0;
+    bottom: 0;
+    left: 0;
+    width: 240px;
+    transform: translateX(-100%);
+    transition: transform 0.2s ease;
+    z-index: 60;
+  }
+  .sidebar--mobile-open {
+    transform: translateX(0);
+  }
+  /* The mobile drawer is always full-size and labeled, regardless of the
+     desktop-only icon-rail "collapsed" state persisted in localStorage. */
+  .sidebar--collapsed {
+    width: 240px;
+    padding: 20px 14px;
+  }
+  .sidebar--collapsed .sidebar__brand {
+    flex-direction: row;
+  }
+  .sidebar--collapsed .sidebar__nav-label {
+    display: inline;
+  }
+  .sidebar--collapsed .sidebar__nav a {
+    justify-content: flex-start;
+    padding: 10px 12px;
+  }
+  .sidebar__collapse-btn {
+    display: none;
+  }
+
+  .sidebar-backdrop {
+    display: block;
+    position: fixed;
+    inset: 0;
+    background: rgba(15, 18, 30, 0.5);
+    z-index: 55;
+  }
+
+  .hamburger-btn {
+    display: inline-flex;
+  }
+
+  .topbar {
+    padding: 0 14px;
+    gap: 8px;
+  }
+  .topbar__name {
+    display: none;
+  }
+
+  .content {
+    padding: 14px;
+  }
+  .app-footer {
+    padding: 10px 14px;
+  }
+
+  .modal-overlay {
+    padding: 10px;
+  }
+
+  .page-header {
+    flex-wrap: wrap;
+  }
+  .table__actions {
+    flex-wrap: wrap;
+  }
+
+  .task-row,
+  .validation-card__row {
+    flex-wrap: wrap;
+  }
+  .task-row__phase {
+    min-width: 0;
+  }
+}

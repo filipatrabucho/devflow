@@ -111,3 +111,13 @@ export function CollapseIcon({ collapsed }) {
     </svg>
   );
 }
+
+export function HamburgerIcon() {
+  return (
+    <svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden="true">
+      <path d="M3 5.5h14" />
+      <path d="M3 10h14" />
+      <path d="M3 14.5h14" />
+    </svg>
+  );
+}

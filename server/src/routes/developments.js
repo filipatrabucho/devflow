@@ -5,7 +5,7 @@ import { requireAuth } from '../middleware/auth.js';
 import { requirePermission } from '../permissions.js';
 import { uploadSpreadsheet } from '../middleware/upload.js';
 import { DEVELOPMENT_PHASES, isValidDateString } from '../utils/validators.js';
-import { fieldForHeader, mapPhase, cellText, parseFlexibleDate } from '../utils/excelImport.js';
+import { findHeaderRow, mapPhase, cellText, parseFlexibleDate, MAX_HEADER_SCAN_ROWS } from '../utils/excelImport.js';
 
 const router = Router();
 
@@ -32,6 +32,13 @@ const DEV_FIELDS = `
   d.created_by AS "createdBy", u.name AS "createdByName"
 `;
 
+const PHASE_LABELS = {
+  waiting_list: 'Waiting List',
+  in_search: 'In Search',
+  in_development: 'In Development',
+  in_production: 'In Production',
+};
+
 router.get('/', requireAuth, async (_req, res) => {
   const [rows] = await pool.query(`
     SELECT ${DEV_FIELDS},
@@ -41,6 +48,59 @@ router.get('/', requireAuth, async (_req, res) => {
     ORDER BY d.created_at DESC
   `);
   res.json({ developments: rows });
+});
+
+// Anyone who can see the Developments list can export the same data — this
+// is just a different format of what's already on screen, not a separate
+// privilege, so it's gated the same as `GET /` (requireAuth only).
+router.get('/export', requireAuth, async (_req, res) => {
+  const [rows] = await pool.query(`
+    SELECT ${DEV_FIELDS} FROM developments d
+    LEFT JOIN profiles u ON u.id = d.created_by
+    ORDER BY d.created_at DESC
+  `);
+
+  const workbook = new ExcelJS.Workbook();
+  const worksheet = workbook.addWorksheet('Developments');
+  worksheet.columns = [
+    { header: 'Tema', key: 'name', width: 32 },
+    { header: 'Descrição', key: 'description', width: 40 },
+    { header: 'Estado', key: 'phaseLabel', width: 18 },
+    { header: 'Data Início', key: 'startDate', width: 14 },
+    { header: 'Data Pedido', key: 'requestedAt', width: 14 },
+    { header: 'Horas', key: 'hoursEstimate', width: 12 },
+    { header: 'Questões', key: 'questions', width: 30 },
+    { header: 'Observações', key: 'observations', width: 30 },
+    { header: 'Data Conclusão', key: 'completionNotes', width: 30 },
+    { header: 'Criado por', key: 'createdByName', width: 20 },
+    { header: 'Criado em', key: 'createdAt', width: 14 },
+  ];
+  worksheet.getRow(1).font = { bold: true };
+
+  for (const dev of rows) {
+    worksheet.addRow({
+      name: dev.name,
+      description: dev.description || '',
+      phaseLabel: PHASE_LABELS[dev.phase] || dev.phase,
+      startDate: dev.startDate ? new Date(dev.startDate) : null,
+      requestedAt: dev.requestedAt ? new Date(dev.requestedAt) : null,
+      hoursEstimate: dev.hoursEstimate || '',
+      questions: dev.questions || '',
+      observations: dev.observations || '',
+      completionNotes: dev.completionNotes || '',
+      createdByName: dev.createdByName || '',
+      createdAt: dev.createdAt ? new Date(dev.createdAt) : null,
+    });
+  }
+  for (const key of ['startDate', 'requestedAt', 'createdAt']) {
+    worksheet.getColumn(key).numFmt = 'yyyy-mm-dd';
+  }
+
+  const buffer = await workbook.xlsx.writeBuffer();
+  const filename = `devflow-developments-${new Date().toISOString().slice(0, 10)}.xlsx`;
+  res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+  res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+  res.send(Buffer.from(buffer));
 });
 
 router.get('/:id', requireAuth, async (req, res) => {
@@ -99,21 +159,18 @@ router.post('/import', requireAuth, requirePermission('manageDevelopments'), (re
       return res.status(400).json({ error: 'The workbook has no sheets' });
     }
 
-    const headerRow = worksheet.getRow(1);
-    const columnField = {};
-    headerRow.eachCell((cell, colNumber) => {
-      const field = fieldForHeader(cellText(cell.value));
-      if (field) columnField[colNumber] = field;
-    });
-
-    if (!Object.values(columnField).includes('name')) {
-      return res.status(400).json({ error: 'Could not find a "Tema" column in the first row' });
+    const headerMatch = findHeaderRow(worksheet);
+    if (!headerMatch) {
+      return res
+        .status(400)
+        .json({ error: `Could not find a "Tema" column in the first ${MAX_HEADER_SCAN_ROWS} rows` });
     }
+    const { headerRowNumber, columnField } = headerMatch;
 
     const created = [];
     const skipped = [];
 
-    for (let rowNumber = 2; rowNumber <= worksheet.rowCount; rowNumber++) {
+    for (let rowNumber = headerRowNumber + 1; rowNumber <= worksheet.rowCount; rowNumber++) {
       const row = worksheet.getRow(rowNumber);
       if (row.cellCount === 0) continue;
 

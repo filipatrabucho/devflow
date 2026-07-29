@@ -131,6 +131,20 @@ export default function Developments() {
     }
   }
 
+  const [exporting, setExporting] = useState(false);
+
+  async function handleExport() {
+    setError('');
+    setExporting(true);
+    try {
+      await api.download('/developments/export');
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setExporting(false);
+    }
+  }
+
   async function handleImport(e) {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -161,6 +175,9 @@ export default function Developments() {
               {deleting ? 'Deleting...' : `Delete selected (${selectedIds.size})`}
             </button>
           )}
+          <button className="btn btn--secondary" onClick={handleExport} disabled={exporting}>
+            {exporting ? 'Exporting...' : 'Export to Excel'}
+          </button>
           {can('manageDevelopments') && (
             <>
               <input
@@ -304,6 +321,7 @@ export default function Developments() {
       ) : filteredDevelopments.length === 0 ? (
         <div className="empty-state">No developments match your filters.</div>
       ) : view === 'list' ? (
+        <div className="table-wrap">
         <table className="table">
           <thead>
             <tr>
@@ -373,6 +391,7 @@ export default function Developments() {
             ))}
           </tbody>
         </table>
+        </div>
       ) : (
         <div className="grid">
           {filteredDevelopments.map((dev) => (

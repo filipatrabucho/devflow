@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { NavLink, Outlet, useNavigate } from 'react-router-dom';
+import { NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import Avatar from './Avatar';
 import Logo from './Logo';
@@ -9,6 +9,7 @@ import {
   CollapseIcon,
   DashboardIcon,
   DevelopmentsIcon,
+  HamburgerIcon,
   ListIcon,
   ProfileIcon,
   RolesIcon,
@@ -31,11 +32,20 @@ function NavItem({ to, end, icon, label }) {
 export default function Layout() {
   const { user, logout, can } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
   const [collapsed, setCollapsed] = useState(() => localStorage.getItem(COLLAPSE_KEY) === '1');
+  const [mobileNavOpen, setMobileNavOpen] = useState(false);
 
   useEffect(() => {
     localStorage.setItem(COLLAPSE_KEY, collapsed ? '1' : '0');
   }, [collapsed]);
+
+  // On phone-width screens the sidebar is an off-canvas drawer (see the
+  // max-width media query in index.css) rather than the desktop icon-rail
+  // collapse — close it whenever the route changes, same as any mobile nav.
+  useEffect(() => {
+    setMobileNavOpen(false);
+  }, [location.pathname]);
 
   async function handleLogout() {
     await logout();
@@ -44,7 +54,8 @@ export default function Layout() {
 
   return (
     <div className="app-shell">
-      <aside className={`sidebar${collapsed ? ' sidebar--collapsed' : ''}`}>
+      {mobileNavOpen && <div className="sidebar-backdrop" onClick={() => setMobileNavOpen(false)} />}
+      <aside className={`sidebar${collapsed ? ' sidebar--collapsed' : ''}${mobileNavOpen ? ' sidebar--mobile-open' : ''}`}>
         <div className="sidebar__brand">
           <span className="sidebar__logo">
             <Logo size={28} />
@@ -73,7 +84,13 @@ export default function Layout() {
       </aside>
       <div className="app-shell__main">
         <header className="topbar">
-          <div />
+          <button
+            className="hamburger-btn"
+            onClick={() => setMobileNavOpen((v) => !v)}
+            aria-label="Open menu"
+          >
+            <HamburgerIcon />
+          </button>
           <div className="topbar__user">
             <span className="topbar__name">{user?.name}</span>
             <span className={`role-pill role-pill--${user?.role}`}>{user?.roleLabel}</span>

@@ -33,7 +33,15 @@ router.get('/', requireAuth, async (req, res) => {
     pendingValidationCount = Number(count);
   }
 
-  const isTopLevel = req.user.role === 'admin' || req.user.role === 'senior';
+  // Permission-based rather than a literal role-name check, so a custom role
+  // created from the Roles page with every permission granted also gets the
+  // full oversight section below, not just the built-in "admin"/"senior" keys.
+  const isTopLevel =
+    permissions.manageUsers &&
+    permissions.manageDevelopments &&
+    permissions.manageTasks &&
+    permissions.viewAllTasks &&
+    permissions.validateTasks;
   let overview = null;
 
   if (isTopLevel) {

@@ -47,7 +47,19 @@ export function AuthProvider({ children }) {
   const login = useCallback(async (email, password) => {
     const { error } = await supabase.auth.signInWithPassword({ email, password });
     if (error) throw new Error(error.message);
-    const data = await api.get('/auth/me');
+
+    // The password was correct at this point — a failure past here is not a
+    // credentials problem, so it must not be shown where a "wrong password"
+    // message would normally appear (that previously confused a real user
+    // into thinking they needed to reset a password that was never wrong).
+    let data;
+    try {
+      data = await api.get('/auth/me');
+    } catch {
+      throw new Error(
+        'Signed in, but could not load your profile. Please try again in a moment, or contact your administrator if this keeps happening.'
+      );
+    }
     setUser(data.user);
     return data.user;
   }, []);
