@@ -114,6 +114,24 @@ ALTER TABLE task_comments ADD COLUMN IF NOT EXISTS to_phase VARCHAR(30) NULL;
 
 CREATE INDEX IF NOT EXISTS idx_task_comments_task ON task_comments(task_id);
 
+-- Single-row table (id is always 1) holding the white-label branding for
+-- this instance: app name, tagline, brand colors, logo/favicon. Editable at
+-- runtime from the in-app Branding settings page (admin role only), so a
+-- client doesn't need a redeploy just to change these.
+CREATE TABLE IF NOT EXISTS branding_settings (
+  id                   SMALLINT PRIMARY KEY DEFAULT 1 CHECK (id = 1),
+  app_name             VARCHAR(60)  NOT NULL DEFAULT 'DevFlow',
+  tagline              VARCHAR(160) NOT NULL DEFAULT 'Task management for engineering teams',
+  primary_color        VARCHAR(20)  NOT NULL DEFAULT '#552f86',
+  primary_hover_color  VARCHAR(20)  NOT NULL DEFAULT '#40166d',
+  primary_light_color  VARCHAR(20)  NOT NULL DEFAULT '#9769dc',
+  logo_url             TEXT NULL,
+  favicon_url          TEXT NULL,
+  updated_at           TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+INSERT INTO branding_settings (id) VALUES (1) ON CONFLICT (id) DO NOTHING;
+
 -- `updated_at` auto-touch, since Postgres has no `ON UPDATE CURRENT_TIMESTAMP`.
 CREATE OR REPLACE FUNCTION set_updated_at()
 RETURNS TRIGGER AS $$
@@ -133,6 +151,10 @@ CREATE TRIGGER trg_profiles_updated_at BEFORE UPDATE ON profiles
 
 DROP TRIGGER IF EXISTS trg_developments_updated_at ON developments;
 CREATE TRIGGER trg_developments_updated_at BEFORE UPDATE ON developments
+  FOR EACH ROW EXECUTE FUNCTION set_updated_at();
+
+DROP TRIGGER IF EXISTS trg_branding_settings_updated_at ON branding_settings;
+CREATE TRIGGER trg_branding_settings_updated_at BEFORE UPDATE ON branding_settings
   FOR EACH ROW EXECUTE FUNCTION set_updated_at();
 
 DROP TRIGGER IF EXISTS trg_tasks_updated_at ON tasks;

@@ -10,6 +10,7 @@ import developmentRoutes from './routes/developments.js';
 import taskRoutes from './routes/tasks.js';
 import roleRoutes from './routes/roles.js';
 import dashboardRoutes from './routes/dashboard.js';
+import brandingRoutes from './routes/branding.js';
 
 export function createApp() {
   const app = express();
@@ -58,6 +59,7 @@ export function createApp() {
   app.use('/api/tasks', taskRoutes);
   app.use('/api/roles', roleRoutes);
   app.use('/api/dashboard', dashboardRoutes);
+  app.use('/api/branding', brandingRoutes);
 
   app.get('/api/health', (_req, res) => res.json({ status: 'ok' }));
 

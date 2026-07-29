@@ -1357,3 +1357,57 @@ select:focus {
   border: 1px dashed var(--color-border);
   border-radius: 10px;
 }
+
+/* Branding settings */
+.branding-color-field {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.branding-color-field input[type='color'] {
+  width: 42px;
+  height: 38px;
+  padding: 3px;
+  cursor: pointer;
+}
+.branding-color-field input:not([type='color']) {
+  flex: 1;
+}
+
+.branding-assets-card {
+  max-width: 480px;
+  margin-top: 20px;
+}
+.branding-assets-card h3:not(:first-child) {
+  margin-top: 20px;
+}
+
+.branding-asset-row {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  margin-top: 10px;
+}
+
+.branding-asset-preview {
+  width: 64px;
+  height: 64px;
+  border-radius: 12px;
+  object-fit: contain;
+  border: 1px solid var(--color-border);
+  background: var(--color-bg);
+}
+.branding-asset-preview--small {
+  width: 40px;
+  height: 40px;
+  border-radius: 8px;
+}
+.branding-asset-preview--empty {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.7rem;
+  color: var(--color-muted);
+  text-align: center;
+  padding: 4px;
+}

@@ -5,6 +5,7 @@ import Avatar from './Avatar';
 import Logo from './Logo';
 import { branding } from '../branding';
 import {
+  BrandingIcon,
   CollapseIcon,
   DashboardIcon,
   DevelopmentsIcon,
@@ -66,6 +67,7 @@ export default function Layout() {
           {can('validateTasks') && <NavItem to="/validation" icon={<ValidationIcon />} label="Validation" />}
           {can('manageUsers') && <NavItem to="/users" icon={<UsersIcon />} label="Users" />}
           {can('manageUsers') && <NavItem to="/roles" icon={<RolesIcon />} label="Roles" />}
+          {user?.role === 'admin' && <NavItem to="/branding" icon={<BrandingIcon />} label="Branding" />}
           <NavItem to="/profile" icon={<ProfileIcon />} label="Profile" />
         </nav>
       </aside>

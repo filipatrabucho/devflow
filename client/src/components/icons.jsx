@@ -93,6 +93,17 @@ export function ProfileIcon() {
   );
 }
 
+export function BrandingIcon() {
+  return (
+    <svg {...common}>
+      <path d="M10 2.5a7.5 7.5 0 1 0 0 15c1 0 1.6-.7 1.6-1.5 0-.4-.2-.7-.4-1-.2-.3-.4-.6-.4-1 0-.8.6-1.4 1.4-1.4h1.5c1.9 0 3.4-1.5 3.4-3.4 0-3.7-3.6-6.7-7.1-6.7Z" />
+      <circle cx="6.2" cy="8" r="1" fill="currentColor" stroke="none" />
+      <circle cx="9.5" cy="5.8" r="1" fill="currentColor" stroke="none" />
+      <circle cx="13" cy="7.5" r="1" fill="currentColor" stroke="none" />
+    </svg>
+  );
+}
+
 export function CollapseIcon({ collapsed }) {
   return (
     <svg width="16" height="16" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">

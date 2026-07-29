@@ -12,6 +12,29 @@ export const branding = {
   faviconUrl: import.meta.env.VITE_FAVICON_URL || '',
 };
 
+// DB-stored settings (edited from the in-app Branding page, admin only) win
+// over env vars, which win over the hardcoded DevFlow defaults above. Called
+// once at boot, before the app renders, so every component reads the final
+// values from the start — no stale-object/missed-re-render issues from
+// mutating `branding` after components already mounted with the old values.
+export async function loadBrandingOverrides() {
+  try {
+    const res = await fetch('/api/branding');
+    if (!res.ok) return;
+    const { branding: db } = await res.json();
+    if (!db) return;
+    if (db.appName) branding.appName = db.appName;
+    if (db.tagline) branding.tagline = db.tagline;
+    if (db.primaryColor) branding.primaryColor = db.primaryColor;
+    if (db.primaryHoverColor) branding.primaryHoverColor = db.primaryHoverColor;
+    if (db.primaryLightColor) branding.primaryLightColor = db.primaryLightColor;
+    if (db.logoUrl) branding.logoUrl = db.logoUrl;
+    if (db.faviconUrl) branding.faviconUrl = db.faviconUrl;
+  } catch {
+    // API not reachable (e.g. offline) — keep the env-var/hardcoded defaults.
+  }
+}
+
 export function applyBrandingCssVars() {
   const root = document.documentElement.style;
   root.setProperty('--color-primary', branding.primaryColor);

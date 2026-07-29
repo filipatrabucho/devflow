@@ -12,6 +12,7 @@ import Validation from './pages/Validation';
 import Users from './pages/Users';
 import Roles from './pages/Roles';
 import Profile from './pages/Profile';
+import BrandingSettings from './pages/BrandingSettings';
 
 export default function App() {
   return (
@@ -38,6 +39,10 @@ export default function App() {
             <Route element={<ProtectedRoute permission="manageUsers" />}>
               <Route path="/users" element={<Users />} />
               <Route path="/roles" element={<Roles />} />
+            </Route>
+
+            <Route element={<ProtectedRoute role="admin" />}>
+              <Route path="/branding" element={<BrandingSettings />} />
             </Route>
           </Route>
         </Route>

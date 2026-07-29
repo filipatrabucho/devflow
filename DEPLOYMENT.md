@@ -19,12 +19,16 @@ in your browser; steps 4-6 are commands you run locally.
    this is `DATABASE_URL`. Use the **Session pooler** connection string if given
    the choice (works better from a serverless environment than the direct one).
 
-## 2. Create the avatars storage bucket
+## 2. Create the storage buckets
 
 1. Go to **Storage** in the Supabase dashboard → **New bucket**.
 2. Name it exactly `avatars`, and toggle **Public bucket** ON (the app links to
    avatars directly via their public URL — no bucket-level secrets are stored
    there, only images).
+3. Repeat, creating a second bucket named exactly `branding`, also **Public**.
+   This is where the in-app Branding settings page (admin role only) stores an
+   uploaded logo/favicon; without this bucket, uploading either one from that
+   page fails with a 500.
 
 ## 3. Apply the database schema + create the first user
 
@@ -88,8 +92,17 @@ Each client gets their own isolated Supabase project + Netlify site (steps 1-6
 above, repeated per client) — that isolation is what makes the branding below
 safe: one client's env vars/domain never touch another's.
 
-**Branding** — add any of these to that client's Netlify env vars (all
-optional, each falls back to the DevFlow default if unset):
+**Branding** — a client's Admin can change the app name, tagline, brand
+colors, logo and favicon themselves, at any time, with no redeploy: log in as
+an `admin` user and open **Branding** in the sidebar (only visible to that
+role). Values saved there are stored in that client's own Supabase project
+(`branding_settings` table) and take effect on next page load.
+
+For a client that hasn't set anything up yet (or as an initial default before
+they touch the Branding page), you can also seed the same fields via that
+client's Netlify env vars — all optional, each falls back to the DevFlow
+default if unset, and any value saved later from the in-app Branding page
+takes priority over these:
 
 | Key | Effect |
 |---|---|
@@ -100,11 +113,11 @@ optional, each falls back to the DevFlow default if unset):
 | `VITE_FAVICON_URL` | Replaces the browser-tab icon |
 
 No rebuild-per-client-code needed — these are read at runtime, so the exact
-same codebase serves every client differently just by their own env vars.
-Netlify's env var dashboard is a plain key/value field, so pasting a hex
-color like `#552f86` there works fine as-is; only quote it (`"#552f86"`) if
-you're ever setting these in a local `.env` file instead, since an unquoted
-`#` starts a comment there.
+same codebase serves every client differently just by their own env vars or
+their own saved Branding settings. Netlify's env var dashboard is a plain
+key/value field, so pasting a hex color like `#552f86` there works fine
+as-is; only quote it (`"#552f86"`) if you're ever setting these in a local
+`.env` file instead, since an unquoted `#` starts a comment there.
 
 **Custom domain** — in that client's Netlify site: **Domain management → Add a
 domain**, point their DNS at Netlify per the instructions shown there, then:
