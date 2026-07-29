@@ -82,6 +82,37 @@ Open the Netlify URL, log in with the bootstrap senior account from step 3, and
 confirm: login works, Developments/Tasks load, and creating a new user / task
 works end-to-end.
 
+## 7. White-labeling a client instance (optional)
+
+Each client gets their own isolated Supabase project + Netlify site (steps 1-6
+above, repeated per client) — that isolation is what makes the branding below
+safe: one client's env vars/domain never touch another's.
+
+**Branding** — add any of these to that client's Netlify env vars (all
+optional, each falls back to the DevFlow default if unset):
+
+| Key | Effect |
+|---|---|
+| `VITE_APP_NAME` | Tab title, sidebar/login wordmark, meta tags |
+| `VITE_APP_TAGLINE` | Meta description / og:description |
+| `VITE_PRIMARY_COLOR` / `VITE_PRIMARY_HOVER_COLOR` / `VITE_PRIMARY_LIGHT_COLOR` | Brand color used across buttons, links, sidebar, badges |
+| `VITE_LOGO_URL` | Replaces the built-in mark with the client's own logo image |
+| `VITE_FAVICON_URL` | Replaces the browser-tab icon |
+
+No rebuild-per-client-code needed — these are read at runtime, so the exact
+same codebase serves every client differently just by their own env vars.
+Netlify's env var dashboard is a plain key/value field, so pasting a hex
+color like `#552f86` there works fine as-is; only quote it (`"#552f86"`) if
+you're ever setting these in a local `.env` file instead, since an unquoted
+`#` starts a comment there.
+
+**Custom domain** — in that client's Netlify site: **Domain management → Add a
+domain**, point their DNS at Netlify per the instructions shown there, then:
+- Update `CLIENT_ORIGIN` (server env var) to their final domain.
+- In their Supabase project: **Authentication → URL Configuration**, set
+  **Site URL** and add the domain to **Redirect URLs**, same as described in
+  step 5/troubleshooting for the primary instance.
+
 ## Notes / things worth knowing
 
 - Login and sessions are handled entirely by Supabase Auth in the browser; our

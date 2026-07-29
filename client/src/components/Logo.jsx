@@ -1,4 +1,18 @@
+import { branding } from '../branding';
+
 export default function Logo({ size = 30 }) {
+  if (branding.logoUrl) {
+    return (
+      <img
+        src={branding.logoUrl}
+        alt={branding.appName}
+        width={size}
+        height={size}
+        style={{ flexShrink: 0, objectFit: 'contain' }}
+      />
+    );
+  }
+
   return (
     <svg width={size} height={size} viewBox="0 0 64 64" aria-hidden="true" style={{ flexShrink: 0 }}>
       <rect x="2" y="2" width="60" height="60" rx="10" fill="var(--color-primary)" />

@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import Logo from '../components/Logo';
+import { branding } from '../branding';
 
 export default function Login() {
   const { login } = useAuth();
@@ -32,7 +33,7 @@ export default function Login() {
           <span className="sidebar__logo">
             <Logo size={34} />
           </span>
-          <h1 className="brand-wordmark">devflow</h1>
+          <h1 className="brand-wordmark">{branding.appName.toLowerCase()}</h1>
         </div>
         <p className="auth-card__subtitle">Sign in with your company account</p>
 

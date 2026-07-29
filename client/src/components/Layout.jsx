@@ -3,6 +3,7 @@ import { NavLink, Outlet, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import Avatar from './Avatar';
 import Logo from './Logo';
+import { branding } from '../branding';
 import {
   CollapseIcon,
   DashboardIcon,
@@ -47,7 +48,7 @@ export default function Layout() {
           <span className="sidebar__logo">
             <Logo size={28} />
           </span>
-          {!collapsed && <span className="brand-wordmark">devflow</span>}
+          {!collapsed && <span className="brand-wordmark">{branding.appName.toLowerCase()}</span>}
           <button
             className="sidebar__collapse-btn"
             onClick={() => setCollapsed((v) => !v)}
