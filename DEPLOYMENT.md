@@ -3,6 +3,10 @@
 Follow these steps in order. Steps 1-3 are done in the Supabase/Netlify dashboards
 in your browser; steps 4-6 are commands you run locally.
 
+Onboarding clients one after another instead of setting up this one instance
+by hand? See `PROVISIONING.md` — it automates steps 1-3 and part of 5-6 into
+a single command.
+
 ## 1. Create the Supabase project
 
 1. Go to https://supabase.com/dashboard → **New project**.

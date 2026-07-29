@@ -7,24 +7,32 @@ import 'dotenv/config';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
-const {
-  DATABASE_URL,
-  SUPABASE_URL,
-  SUPABASE_SERVICE_ROLE_KEY,
-  BOOTSTRAP_SENIOR_NAME = 'Admin',
-  BOOTSTRAP_SENIOR_EMAIL,
-  BOOTSTRAP_SENIOR_PASSWORD,
-} = process.env;
+function pgClientFor(databaseUrl) {
+  return new pg.Client({
+    connectionString: databaseUrl,
+    ssl: databaseUrl.includes('supabase') ? { rejectUnauthorized: false } : undefined,
+  });
+}
 
-async function main() {
-  if (!DATABASE_URL) {
-    throw new Error('DATABASE_URL must be set (Supabase project Settings > Database > Connection string)');
+// Applies schema.sql (idempotent — safe to re-run) and, only the first time
+// (profiles table still empty), creates a bootstrap Supabase Auth user plus
+// its `profiles` row with the `senior` role. Shared by the local `db:init`
+// CLI below and by scripts/provision-client.mjs, which calls this directly
+// against a freshly-created client project instead of the local .env one.
+export async function applySchemaAndBootstrap({
+  databaseUrl,
+  supabaseUrl,
+  serviceRoleKey,
+  bootstrapName = 'Admin',
+  bootstrapEmail,
+  bootstrapPassword,
+  log = console.log,
+}) {
+  if (!databaseUrl) {
+    throw new Error('databaseUrl is required (Supabase project Settings > Database > Connection string)');
   }
 
-  const client = new pg.Client({
-    connectionString: DATABASE_URL,
-    ssl: DATABASE_URL.includes('supabase') ? { rejectUnauthorized: false } : undefined,
-  });
+  const client = pgClientFor(databaseUrl);
   await client.connect();
 
   const { rows: colCheck } = await client.query(
@@ -34,70 +42,86 @@ async function main() {
   const hadIsStaffColumn = colCheck[0].count > 0;
 
   const schemaSql = fs.readFileSync(path.join(__dirname, 'schema.sql'), 'utf8');
-  console.log('Applying schema...');
+  log('Applying schema...');
   await client.query(schemaSql);
 
   if (!hadIsStaffColumn) {
     await client.query("UPDATE roles SET is_staff = TRUE WHERE key_name = 'developer'");
-    console.log('Defaulted "Counts as staff" to on for the developer role.');
+    log('Defaulted "Counts as staff" to on for the developer role.');
   }
 
   const { rows } = await client.query('SELECT COUNT(*)::int AS count FROM profiles');
   await client.end();
 
   if (rows[0].count > 0) {
-    console.log('Profiles table already populated, skipping bootstrap user.');
-    console.log('Database ready.');
-    return;
+    log('Profiles table already populated, skipping bootstrap user.');
+    return { bootstrapUserCreated: false };
   }
 
-  if (!BOOTSTRAP_SENIOR_EMAIL || !BOOTSTRAP_SENIOR_PASSWORD) {
-    console.log(
-      'No profiles found. Set BOOTSTRAP_SENIOR_EMAIL and BOOTSTRAP_SENIOR_PASSWORD in .env to auto-create the first senior account.'
-    );
-    console.log('Database ready.');
-    return;
+  if (!bootstrapEmail || !bootstrapPassword) {
+    log('No profiles found and no bootstrap email/password given — skipping bootstrap user.');
+    return { bootstrapUserCreated: false };
   }
 
-  if (!SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY) {
-    console.error('SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY must be set to create the bootstrap user.');
-    process.exitCode = 1;
-    return;
+  if (!supabaseUrl || !serviceRoleKey) {
+    throw new Error('supabaseUrl and serviceRoleKey are required to create the bootstrap user.');
   }
 
-  const supabaseAdmin = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, {
+  const supabaseAdmin = createClient(supabaseUrl, serviceRoleKey, {
     auth: { autoRefreshToken: false, persistSession: false },
   });
 
-  const email = BOOTSTRAP_SENIOR_EMAIL.toLowerCase();
+  const email = bootstrapEmail.toLowerCase();
   const { data, error } = await supabaseAdmin.auth.admin.createUser({
     email,
-    password: BOOTSTRAP_SENIOR_PASSWORD,
+    password: bootstrapPassword,
     email_confirm: true,
   });
 
   if (error) {
-    console.error('Failed to create bootstrap Supabase Auth user:', error.message);
-    process.exitCode = 1;
-    return;
+    throw new Error(`Failed to create bootstrap Supabase Auth user: ${error.message}`);
   }
 
-  const insertClient = new pg.Client({
-    connectionString: DATABASE_URL,
-    ssl: DATABASE_URL.includes('supabase') ? { rejectUnauthorized: false } : undefined,
-  });
+  const insertClient = pgClientFor(databaseUrl);
   await insertClient.connect();
   await insertClient.query(
     'INSERT INTO profiles (id, name, email, role) VALUES ($1, $2, $3, $4)',
-    [data.user.id, BOOTSTRAP_SENIOR_NAME, email, 'senior']
+    [data.user.id, bootstrapName, email, 'senior']
   );
   await insertClient.end();
 
-  console.log(`Bootstrap senior user created: ${email}`);
+  log(`Bootstrap senior user created: ${email}`);
+  return { bootstrapUserCreated: true, userId: data.user.id, email };
+}
+
+// CLI entry point (`npm run db:init`), reading connection info from the
+// local server/.env — the single-client, run-it-yourself workflow described
+// in DEPLOYMENT.md.
+async function runCli() {
+  const {
+    DATABASE_URL,
+    SUPABASE_URL,
+    SUPABASE_SERVICE_ROLE_KEY,
+    BOOTSTRAP_SENIOR_NAME,
+    BOOTSTRAP_SENIOR_EMAIL,
+    BOOTSTRAP_SENIOR_PASSWORD,
+  } = process.env;
+
+  await applySchemaAndBootstrap({
+    databaseUrl: DATABASE_URL,
+    supabaseUrl: SUPABASE_URL,
+    serviceRoleKey: SUPABASE_SERVICE_ROLE_KEY,
+    bootstrapName: BOOTSTRAP_SENIOR_NAME,
+    bootstrapEmail: BOOTSTRAP_SENIOR_EMAIL,
+    bootstrapPassword: BOOTSTRAP_SENIOR_PASSWORD,
+  });
   console.log('Database ready.');
 }
 
-main().catch((err) => {
-  console.error('Database initialization failed:', err);
-  process.exitCode = 1;
-});
+const isMain = process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url);
+if (isMain) {
+  runCli().catch((err) => {
+    console.error('Database initialization failed:', err.message);
+    process.exitCode = 1;
+  });
+}
