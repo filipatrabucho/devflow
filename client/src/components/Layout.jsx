@@ -23,8 +23,9 @@ export default function Layout() {
         </div>
         <nav className="sidebar__nav">
           <NavLink to="/" end>
-            Developments
+            Dashboard
           </NavLink>
+          <NavLink to="/developments">Developments</NavLink>
           <NavLink to="/my-tasks">My Tasks</NavLink>
           {can('viewAllTasks') && <NavLink to="/all-tasks">All Tasks</NavLink>}
           {can('validateTasks') && <NavLink to="/validation">Validation</NavLink>}

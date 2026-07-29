@@ -118,7 +118,7 @@ export default function DevelopmentDetail() {
     if (!window.confirm('Delete this development and all of its tasks?')) return;
     try {
       await api.delete(`/developments/${id}`);
-      navigate('/', { replace: true });
+      navigate('/developments', { replace: true });
     } catch (err) {
       setError(err.message);
     }
@@ -198,7 +198,7 @@ export default function DevelopmentDetail() {
 
   return (
     <div>
-      <Link to="/" className="back-link">
+      <Link to="/developments" className="back-link">
         ‹ Back to Developments
       </Link>
 

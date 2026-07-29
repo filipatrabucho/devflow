@@ -17,19 +17,24 @@ CREATE TABLE IF NOT EXISTS roles (
   can_manage_tasks        BOOLEAN NOT NULL DEFAULT FALSE,
   can_view_all_tasks      BOOLEAN NOT NULL DEFAULT FALSE,
   can_validate_tasks      BOOLEAN NOT NULL DEFAULT FALSE,
+  is_staff                BOOLEAN NOT NULL DEFAULT FALSE,
   created_at              TIMESTAMPTZ NOT NULL DEFAULT now(),
   updated_at              TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
 ALTER TABLE roles ADD COLUMN IF NOT EXISTS can_validate_tasks BOOLEAN NOT NULL DEFAULT FALSE;
+-- Whether this role counts as "staff" for the Dashboard's "no pending tasks
+-- assigned" widget (init.js defaults 'developer' to true the first time this
+-- column is added; admins can change it from the Roles page afterwards).
+ALTER TABLE roles ADD COLUMN IF NOT EXISTS is_staff BOOLEAN NOT NULL DEFAULT FALSE;
 
 INSERT INTO roles
-  (key_name, label, can_manage_users, can_manage_developments, can_manage_tasks, can_view_all_tasks, can_validate_tasks)
+  (key_name, label, can_manage_users, can_manage_developments, can_manage_tasks, can_view_all_tasks, can_validate_tasks, is_staff)
 VALUES
-  ('senior',    'Senior',    TRUE,  TRUE,  TRUE,  TRUE,  TRUE),
-  ('admin',     'Admin',     TRUE,  TRUE,  TRUE,  TRUE,  TRUE),
-  ('partner',   'Partner',   FALSE, TRUE,  FALSE, TRUE,  FALSE),
-  ('developer', 'Developer', FALSE, FALSE, FALSE, FALSE, FALSE)
+  ('senior',    'Senior',    TRUE,  TRUE,  TRUE,  TRUE,  TRUE,  FALSE),
+  ('admin',     'Admin',     TRUE,  TRUE,  TRUE,  TRUE,  TRUE,  FALSE),
+  ('partner',   'Partner',   FALSE, TRUE,  FALSE, TRUE,  FALSE, FALSE),
+  ('developer', 'Developer', FALSE, FALSE, FALSE, FALSE, FALSE, TRUE)
 ON CONFLICT (key_name) DO NOTHING;
 
 -- One row per Supabase Auth user (auth.users.id). Login/password are

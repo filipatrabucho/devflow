@@ -27,9 +27,20 @@ async function main() {
   });
   await client.connect();
 
+  const { rows: colCheck } = await client.query(
+    `SELECT COUNT(*)::int AS count FROM information_schema.columns
+     WHERE table_schema = 'public' AND table_name = 'roles' AND column_name = 'is_staff'`
+  );
+  const hadIsStaffColumn = colCheck[0].count > 0;
+
   const schemaSql = fs.readFileSync(path.join(__dirname, 'schema.sql'), 'utf8');
   console.log('Applying schema...');
   await client.query(schemaSql);
+
+  if (!hadIsStaffColumn) {
+    await client.query("UPDATE roles SET is_staff = TRUE WHERE key_name = 'developer'");
+    console.log('Defaulted "Counts as staff" to on for the developer role.');
+  }
 
   const { rows } = await client.query('SELECT COUNT(*)::int AS count FROM profiles');
   await client.end();

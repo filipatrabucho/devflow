@@ -17,6 +17,7 @@ const emptyNewRole = {
   manageTasks: false,
   viewAllTasks: false,
   validateTasks: false,
+  isStaff: false,
 };
 
 export default function Roles() {
@@ -35,7 +36,11 @@ export default function Roles() {
     try {
       const data = await api.get('/roles');
       setRoles(data.roles);
-      setDrafts(Object.fromEntries(data.roles.map((r) => [r.key, { label: r.label, ...r.permissions }])));
+      setDrafts(
+        Object.fromEntries(
+          data.roles.map((r) => [r.key, { label: r.label, isStaff: r.isStaff, ...r.permissions }])
+        )
+      );
     } catch (err) {
       setError(err.message);
     } finally {
@@ -146,6 +151,14 @@ export default function Roles() {
               <span>{col.label}</span>
             </label>
           ))}
+          <label className="field field--inline">
+            <input
+              type="checkbox"
+              checked={newRole.isStaff}
+              onChange={(e) => setNewRole({ ...newRole, isStaff: e.target.checked })}
+            />
+            <span>Counts as staff (Dashboard)</span>
+          </label>
           <button className="btn btn--primary" type="submit" disabled={creating}>
             {creating ? 'Creating...' : 'Create role'}
           </button>
@@ -160,6 +173,7 @@ export default function Roles() {
               {PERMISSION_COLUMNS.map((col) => (
                 <th key={col.key}>{col.label}</th>
               ))}
+              <th>Counts as staff (Dashboard)</th>
               <th></th>
             </tr>
           </thead>
@@ -185,6 +199,13 @@ export default function Roles() {
                       />
                     </td>
                   ))}
+                  <td>
+                    <input
+                      type="checkbox"
+                      checked={!!draft.isStaff}
+                      onChange={(e) => updateDraft(role.key, { isStaff: e.target.checked })}
+                    />
+                  </td>
                   <td className="table__actions">
                     <button
                       className="btn btn--secondary"

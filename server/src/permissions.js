@@ -22,13 +22,14 @@ export async function getRoles() {
 
   const [rows] = await pool.query(
     `SELECT key_name AS "keyName", label, can_manage_users, can_manage_developments,
-            can_manage_tasks, can_view_all_tasks, can_validate_tasks
+            can_manage_tasks, can_view_all_tasks, can_validate_tasks, is_staff
      FROM roles ORDER BY id ASC`
   );
 
   cache = rows.map((row) => ({
     key: row.keyName,
     label: row.label,
+    isStaff: !!row.is_staff,
     permissions: {
       manageUsers: !!row.can_manage_users,
       manageDevelopments: !!row.can_manage_developments,

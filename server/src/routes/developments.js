@@ -174,6 +174,30 @@ router.post('/import', requireAuth, requirePermission('manageDevelopments'), (re
   });
 });
 
+// Bulk-delete is intentionally restricted to the Senior/Admin roles
+// specifically (not just anyone with "Manage developments", e.g. Partner),
+// since it can wipe every task/comment underneath the selected developments.
+router.post('/bulk-delete', requireAuth, async (req, res) => {
+  if (req.user.role !== 'admin' && req.user.role !== 'senior') {
+    return res.status(403).json({ error: 'Only Admin or Senior can bulk-delete developments' });
+  }
+
+  const { ids } = req.body || {};
+  if (!Array.isArray(ids) || ids.length === 0) {
+    return res.status(400).json({ error: 'ids must be a non-empty array' });
+  }
+  if (ids.length > 500) {
+    return res.status(400).json({ error: 'Cannot delete more than 500 developments at once' });
+  }
+  const cleanIds = ids.map(Number);
+  if (cleanIds.some((n) => !Number.isInteger(n))) {
+    return res.status(400).json({ error: 'All ids must be integers' });
+  }
+
+  const [result] = await pool.execute('DELETE FROM developments WHERE id = ANY(?::int[])', [cleanIds]);
+  res.json({ deletedCount: result.affectedRows });
+});
+
 router.put('/:id', requireAuth, requirePermission('manageDevelopments'), async (req, res) => {
   const id = Number(req.params.id);
   if (!Number.isInteger(id)) return res.status(400).json({ error: 'Invalid development id' });

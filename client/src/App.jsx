@@ -3,6 +3,7 @@ import { AuthProvider } from './context/AuthContext';
 import ProtectedRoute from './components/ProtectedRoute';
 import Layout from './components/Layout';
 import Login from './pages/Login';
+import Dashboard from './pages/Dashboard';
 import Developments from './pages/Developments';
 import DevelopmentDetail from './pages/DevelopmentDetail';
 import MyTasks from './pages/MyTasks';
@@ -20,7 +21,8 @@ export default function App() {
 
         <Route element={<ProtectedRoute />}>
           <Route element={<Layout />}>
-            <Route path="/" element={<Developments />} />
+            <Route path="/" element={<Dashboard />} />
+            <Route path="/developments" element={<Developments />} />
             <Route path="/developments/:id" element={<DevelopmentDetail />} />
             <Route path="/my-tasks" element={<MyTasks />} />
             <Route path="/profile" element={<Profile />} />

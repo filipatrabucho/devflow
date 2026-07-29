@@ -9,7 +9,8 @@ import Modal from '../components/Modal';
 const EMPTY_FORM = { name: '', description: '', phase: 'waiting_list', startDate: '' };
 
 export default function Developments() {
-  const { can } = useAuth();
+  const { can, user } = useAuth();
+  const canBulkDelete = user?.role === 'admin' || user?.role === 'senior';
   const [developments, setDevelopments] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -21,6 +22,8 @@ export default function Developments() {
   const [statusFilter, setStatusFilter] = useState('');
   const [requestedFrom, setRequestedFrom] = useState('');
   const [requestedTo, setRequestedTo] = useState('');
+  const [selectedIds, setSelectedIds] = useState(new Set());
+  const [deleting, setDeleting] = useState(false);
 
   const importInputRef = useRef(null);
   const [importing, setImporting] = useState(false);
@@ -87,6 +90,47 @@ export default function Developments() {
     }
   }
 
+  function toggleSelected(id) {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  }
+
+  function toggleSelectAll() {
+    const allSelected =
+      filteredDevelopments.length > 0 && filteredDevelopments.every((d) => selectedIds.has(d.id));
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      filteredDevelopments.forEach((d) => (allSelected ? next.delete(d.id) : next.add(d.id)));
+      return next;
+    });
+  }
+
+  async function handleBulkDelete() {
+    if (selectedIds.size === 0) return;
+    if (
+      !window.confirm(
+        `Delete ${selectedIds.size} development(s) and all of their tasks? This cannot be undone.`
+      )
+    ) {
+      return;
+    }
+    setDeleting(true);
+    setError('');
+    try {
+      await api.post('/developments/bulk-delete', { ids: Array.from(selectedIds) });
+      setSelectedIds(new Set());
+      await load();
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setDeleting(false);
+    }
+  }
+
   async function handleImport(e) {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -111,24 +155,31 @@ export default function Developments() {
     <div>
       <div className="page-header">
         <h1>Developments</h1>
-        {can('manageDevelopments') && (
-          <div className="table__actions">
-            <input
-              ref={importInputRef}
-              type="file"
-              accept=".xlsx"
-              onChange={handleImport}
-              hidden
-              id="import-input"
-            />
-            <label htmlFor="import-input" className="btn btn--secondary">
-              {importing ? 'Importing...' : 'Import from Excel'}
-            </label>
-            <button className="btn btn--primary" onClick={openCreateForm}>
-              New Development
+        <div className="table__actions">
+          {canBulkDelete && selectedIds.size > 0 && (
+            <button className="btn btn--ghost btn--danger" onClick={handleBulkDelete} disabled={deleting}>
+              {deleting ? 'Deleting...' : `Delete selected (${selectedIds.size})`}
             </button>
-          </div>
-        )}
+          )}
+          {can('manageDevelopments') && (
+            <>
+              <input
+                ref={importInputRef}
+                type="file"
+                accept=".xlsx"
+                onChange={handleImport}
+                hidden
+                id="import-input"
+              />
+              <label htmlFor="import-input" className="btn btn--secondary">
+                {importing ? 'Importing...' : 'Import from Excel'}
+              </label>
+              <button className="btn btn--primary" onClick={openCreateForm}>
+                New Development
+              </button>
+            </>
+          )}
+        </div>
       </div>
 
       {error && <div className="alert alert--error">{error}</div>}
@@ -256,6 +307,19 @@ export default function Developments() {
         <table className="table">
           <thead>
             <tr>
+              {canBulkDelete && (
+                <th>
+                  <input
+                    type="checkbox"
+                    checked={
+                      filteredDevelopments.length > 0 &&
+                      filteredDevelopments.every((d) => selectedIds.has(d.id))
+                    }
+                    onChange={toggleSelectAll}
+                    aria-label="Select all"
+                  />
+                </th>
+              )}
               <th>Name</th>
               <th>Status</th>
               <th>Description</th>
@@ -268,6 +332,16 @@ export default function Developments() {
           <tbody>
             {filteredDevelopments.map((dev) => (
               <tr key={dev.id}>
+                {canBulkDelete && (
+                  <td>
+                    <input
+                      type="checkbox"
+                      checked={selectedIds.has(dev.id)}
+                      onChange={() => toggleSelected(dev.id)}
+                      aria-label={`Select ${dev.name}`}
+                    />
+                  </td>
+                )}
                 <td>
                   <Link className="table__link" to={`/developments/${dev.id}`}>
                     {dev.name}
