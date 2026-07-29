@@ -83,6 +83,7 @@ export default function Layout() {
         <main className="content">
           <Outlet />
         </main>
+        <footer className="app-footer">© Ana Trabucho {new Date().getFullYear()}. All Rights Reserved.</footer>
       </div>
     </div>
   );

@@ -210,8 +210,17 @@ p {
   flex: 1;
   padding: 28px;
   overflow-y: auto;
-  max-width: 1440px;
+  max-width: 1680px;
   width: 100%;
+}
+
+.app-footer {
+  flex-shrink: 0;
+  padding: 14px 28px;
+  text-align: center;
+  font-size: 0.8rem;
+  color: var(--color-muted);
+  border-top: 1px solid var(--color-border);
 }
 
 .page-loading {
@@ -1144,11 +1153,27 @@ select:focus {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 34px;
-  height: 34px;
-  border-radius: 10px;
+  width: 36px;
+  height: 36px;
+  border-radius: 11px;
   color: #fff;
   flex-shrink: 0;
+  box-shadow: 0 0 0 6px color-mix(in srgb, var(--stat-color, var(--color-primary)) 14%, transparent);
+}
+
+.dashboard-card--stat {
+  position: relative;
+  overflow: hidden;
+  padding-top: 16px;
+}
+.dashboard-card--stat::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 4px;
+  background: var(--stat-color, var(--color-primary));
 }
 
 .info-tooltip {
@@ -1225,9 +1250,19 @@ select:focus {
 
 .phase-bar-chart__row {
   display: grid;
-  grid-template-columns: 90px 1fr 26px;
+  grid-template-columns: 90px 1fr 66px;
   align-items: center;
   gap: 8px;
+  padding: 3px 5px;
+  margin: -3px -5px;
+  border-radius: 6px;
+  transition: background 0.12s ease;
+}
+.phase-bar-chart__row:hover {
+  background: rgba(85, 47, 134, 0.05);
+}
+.phase-bar-chart__row:hover .phase-bar-chart__fill {
+  filter: brightness(1.1);
 }
 
 .phase-bar-chart__label {
@@ -1238,20 +1273,29 @@ select:focus {
 .phase-bar-chart__track {
   background: #eceef2;
   border-radius: 999px;
-  height: 8px;
+  height: 9px;
   overflow: hidden;
 }
 
 .phase-bar-chart__fill {
   height: 100%;
   border-radius: 999px;
-  transition: width 0.2s ease;
+  transition: width 0.2s ease, filter 0.12s ease;
 }
 
 .phase-bar-chart__count {
+  display: flex;
+  align-items: baseline;
+  justify-content: flex-end;
+  gap: 4px;
   font-size: 0.78rem;
   font-weight: 700;
-  text-align: right;
+}
+
+.phase-bar-chart__share {
+  font-size: 0.66rem;
+  font-weight: 500;
+  color: var(--color-muted);
 }
 
 .staff-roster {

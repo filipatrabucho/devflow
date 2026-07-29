@@ -22,7 +22,7 @@ function InfoDot({ text }) {
 
 function StatCard({ icon, color, title, tooltip, value, to, linkLabel = 'View →' }) {
   return (
-    <div className="card dashboard-card">
+    <div className="card dashboard-card dashboard-card--stat" style={{ '--stat-color': color }}>
       <div className="dashboard-card__icon-row">
         <span className="dashboard-card__icon" style={{ background: color }}>
           {icon}

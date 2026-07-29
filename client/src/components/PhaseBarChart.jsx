@@ -13,16 +13,24 @@ export default function PhaseBarChart({ data, list }) {
       {list.map((p) => {
         const count = data[p.value] || 0;
         const pct = Math.round((count / max) * 100);
+        const share = total > 0 ? Math.round((count / total) * 100) : 0;
+        const color = TASK_PHASE_COLORS[p.value];
         return (
-          <div className="phase-bar-chart__row" key={p.value}>
+          <div className="phase-bar-chart__row" key={p.value} title={`${p.label}: ${count} (${share}%)`}>
             <span className="phase-bar-chart__label">{p.label}</span>
             <div className="phase-bar-chart__track">
               <div
                 className="phase-bar-chart__fill"
-                style={{ width: `${pct}%`, background: TASK_PHASE_COLORS[p.value] }}
+                style={{
+                  width: `${pct}%`,
+                  background: `linear-gradient(90deg, ${color}, color-mix(in srgb, ${color} 55%, white))`,
+                }}
               />
             </div>
-            <span className="phase-bar-chart__count">{count}</span>
+            <span className="phase-bar-chart__count">
+              {count}
+              <span className="phase-bar-chart__share">{share}%</span>
+            </span>
           </div>
         );
       })}
