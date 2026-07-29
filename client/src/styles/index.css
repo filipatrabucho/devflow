@@ -10,8 +10,11 @@
   --color-dark: #101118;
   --color-danger: #d7373f;
   --color-success: #1a8a4a;
-  --radius: 8px;
+  --radius: 10px;
   --shadow-sm: 0 1px 2px rgba(16, 24, 40, 0.06);
+  --shadow-md: 0 8px 24px rgba(16, 24, 40, 0.08);
+  --sidebar-width: 224px;
+  --sidebar-width-collapsed: 76px;
 }
 
 * {
@@ -64,20 +67,34 @@ p {
 }
 
 .sidebar {
-  width: 220px;
+  width: var(--sidebar-width);
   flex-shrink: 0;
-  background: var(--color-dark);
+  background: linear-gradient(190deg, var(--color-dark) 0%, #201a34 65%, #241a3d 100%);
   color: #dfdfe6;
   display: flex;
   flex-direction: column;
-  padding: 20px 16px;
+  padding: 20px 14px;
+  box-shadow: var(--shadow-md);
+  transition: width 0.18s ease, padding 0.18s ease;
+  overflow: hidden;
+}
+
+.sidebar--collapsed {
+  width: var(--sidebar-width-collapsed);
+  padding: 20px 12px;
 }
 
 .sidebar__brand {
   display: flex;
   align-items: center;
-  gap: 10px;
+  justify-content: space-between;
+  gap: 8px;
   margin-bottom: 28px;
+}
+
+.sidebar--collapsed .sidebar__brand {
+  flex-direction: column;
+  gap: 12px;
 }
 
 .brand-wordmark {
@@ -85,11 +102,31 @@ p {
   font-weight: 700;
   letter-spacing: -0.02em;
   font-size: 1.2rem;
+  white-space: nowrap;
 }
 
 .sidebar__logo {
   flex-shrink: 0;
   display: inline-flex;
+}
+
+.sidebar__collapse-btn {
+  flex-shrink: 0;
+  width: 26px;
+  height: 26px;
+  border-radius: 8px;
+  border: none;
+  background: rgba(255, 255, 255, 0.08);
+  color: #b7bdd6;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: background 0.12s ease, color 0.12s ease;
+}
+.sidebar__collapse-btn:hover {
+  background: rgba(255, 255, 255, 0.18);
+  color: #fff;
 }
 
 .sidebar__nav {
@@ -99,21 +136,40 @@ p {
 }
 
 .sidebar__nav a {
+  display: flex;
+  align-items: center;
+  gap: 11px;
   color: #b7bdd6;
   text-decoration: none;
-  padding: 9px 12px;
+  padding: 10px 12px;
   border-radius: var(--radius);
   font-size: 0.92rem;
+  white-space: nowrap;
+}
+
+.sidebar--collapsed .sidebar__nav a {
+  justify-content: center;
+  padding: 11px;
+}
+
+.sidebar__nav-icon {
+  display: inline-flex;
+  flex-shrink: 0;
+}
+
+.sidebar--collapsed .sidebar__nav-label {
+  display: none;
 }
 
 .sidebar__nav a:hover {
-  background: rgba(255, 255, 255, 0.06);
+  background: rgba(255, 255, 255, 0.07);
   color: #fff;
 }
 
 .sidebar__nav a.active {
   background: var(--color-primary);
   color: #fff;
+  box-shadow: 0 4px 14px rgba(85, 47, 134, 0.45);
 }
 
 .sidebar__nav a:focus-visible {
@@ -211,11 +267,12 @@ p {
 .field input,
 .field textarea {
   font: inherit;
-  padding: 9px 11px;
+  padding: 10px 13px;
   border: 1px solid var(--color-border);
   border-radius: var(--radius);
   background: #fff;
   color: var(--color-text);
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
 }
 
 /* Every <select> in the app shares this look, regardless of where it's used
@@ -224,18 +281,18 @@ select {
   font: inherit;
   font-size: 0.88rem;
   font-weight: 500;
-  padding: 8px 32px 8px 12px;
+  padding: 9px 34px 9px 13px;
   border: 1px solid var(--color-border);
   border-radius: var(--radius);
   background-color: #fff;
   background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 20' fill='%236b7280'%3E%3Cpath fill-rule='evenodd' d='M5.23 7.21a.75.75 0 011.06.02L10 11.168l3.71-3.938a.75.75 0 111.08 1.04l-4.25 4.5a.75.75 0 01-1.08 0l-4.25-4.5a.75.75 0 01.02-1.06z' clip-rule='evenodd'/%3E%3C/svg%3E");
   background-repeat: no-repeat;
-  background-position: right 10px center;
+  background-position: right 11px center;
   background-size: 14px;
   color: var(--color-text);
   appearance: none;
   cursor: pointer;
-  transition: border-color 0.15s ease;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
 }
 
 select:hover {
@@ -245,8 +302,9 @@ select:hover {
 .field input:focus,
 .field textarea:focus,
 select:focus {
-  outline: 2px solid var(--color-primary);
-  outline-offset: 1px;
+  outline: none;
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 3px rgba(85, 47, 134, 0.15);
 }
 
 .form {
@@ -276,7 +334,7 @@ select:focus {
   font: inherit;
   font-weight: 600;
   font-size: 0.88rem;
-  padding: 9px 16px;
+  padding: 10px 20px;
   border-radius: var(--radius);
   border: 1px solid transparent;
   cursor: pointer;
@@ -284,6 +342,8 @@ select:focus {
   align-items: center;
   justify-content: center;
   gap: 6px;
+  transition: background 0.15s ease, border-color 0.15s ease, color 0.15s ease, box-shadow 0.15s ease,
+    transform 0.1s ease;
 }
 
 .btn:disabled {
@@ -294,9 +354,15 @@ select:focus {
 .btn--primary {
   background: var(--color-primary);
   color: #fff;
+  box-shadow: 0 3px 10px rgba(85, 47, 134, 0.3);
 }
 .btn--primary:hover:not(:disabled) {
   background: var(--color-primary-hover);
+  box-shadow: 0 4px 14px rgba(85, 47, 134, 0.4);
+  transform: translateY(-1px);
+}
+.btn--primary:active:not(:disabled) {
+  transform: translateY(0);
 }
 
 .btn--secondary {
@@ -354,19 +420,22 @@ select:focus {
 .card {
   background: var(--color-surface);
   border: 1px solid var(--color-border);
-  border-radius: 10px;
+  border-radius: 14px;
   padding: 18px;
   box-shadow: var(--shadow-sm);
+  transition: box-shadow 0.15s ease, border-color 0.15s ease;
 }
 
 .card--link {
   text-decoration: none;
   color: inherit;
   display: block;
-  transition: border-color 0.15s ease;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease, transform 0.12s ease;
 }
 .card--link:hover {
   border-color: var(--color-primary);
+  box-shadow: var(--shadow-md);
+  transform: translateY(-2px);
 }
 
 .card__header {
@@ -1059,6 +1128,27 @@ select:focus {
 }
 .dashboard-card__header-row h3 {
   margin-bottom: 0;
+}
+
+.dashboard-card__icon-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 10px;
+}
+.dashboard-card__icon-row h3 {
+  margin-bottom: 0;
+}
+
+.dashboard-card__icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  border-radius: 10px;
+  color: #fff;
+  flex-shrink: 0;
 }
 
 .info-tooltip {

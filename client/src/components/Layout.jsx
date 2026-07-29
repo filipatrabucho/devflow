@@ -1,11 +1,39 @@
+import { useEffect, useState } from 'react';
 import { NavLink, Outlet, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import Avatar from './Avatar';
 import Logo from './Logo';
+import {
+  CollapseIcon,
+  DashboardIcon,
+  DevelopmentsIcon,
+  ListIcon,
+  ProfileIcon,
+  RolesIcon,
+  TasksIcon,
+  UsersIcon,
+  ValidationIcon,
+} from './icons';
+
+const COLLAPSE_KEY = 'devflow_sidebar_collapsed';
+
+function NavItem({ to, end, icon, label }) {
+  return (
+    <NavLink to={to} end={end} title={label}>
+      <span className="sidebar__nav-icon">{icon}</span>
+      <span className="sidebar__nav-label">{label}</span>
+    </NavLink>
+  );
+}
 
 export default function Layout() {
   const { user, logout, can } = useAuth();
   const navigate = useNavigate();
+  const [collapsed, setCollapsed] = useState(() => localStorage.getItem(COLLAPSE_KEY) === '1');
+
+  useEffect(() => {
+    localStorage.setItem(COLLAPSE_KEY, collapsed ? '1' : '0');
+  }, [collapsed]);
 
   async function handleLogout() {
     await logout();
@@ -14,24 +42,30 @@ export default function Layout() {
 
   return (
     <div className="app-shell">
-      <aside className="sidebar">
+      <aside className={`sidebar${collapsed ? ' sidebar--collapsed' : ''}`}>
         <div className="sidebar__brand">
           <span className="sidebar__logo">
-            <Logo size={30} />
+            <Logo size={28} />
           </span>
-          <span className="brand-wordmark">devflow</span>
+          {!collapsed && <span className="brand-wordmark">devflow</span>}
+          <button
+            className="sidebar__collapse-btn"
+            onClick={() => setCollapsed((v) => !v)}
+            aria-label={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+            title={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+          >
+            <CollapseIcon collapsed={collapsed} />
+          </button>
         </div>
         <nav className="sidebar__nav">
-          <NavLink to="/" end>
-            Dashboard
-          </NavLink>
-          <NavLink to="/developments">Developments</NavLink>
-          <NavLink to="/my-tasks">My Tasks</NavLink>
-          {can('viewAllTasks') && <NavLink to="/all-tasks">All Tasks</NavLink>}
-          {can('validateTasks') && <NavLink to="/validation">Validation</NavLink>}
-          {can('manageUsers') && <NavLink to="/users">Users</NavLink>}
-          {can('manageUsers') && <NavLink to="/roles">Roles</NavLink>}
-          <NavLink to="/profile">Profile</NavLink>
+          <NavItem to="/" end icon={<DashboardIcon />} label="Dashboard" />
+          <NavItem to="/developments" icon={<DevelopmentsIcon />} label="Developments" />
+          <NavItem to="/my-tasks" icon={<TasksIcon />} label="My Tasks" />
+          {can('viewAllTasks') && <NavItem to="/all-tasks" icon={<ListIcon />} label="All Tasks" />}
+          {can('validateTasks') && <NavItem to="/validation" icon={<ValidationIcon />} label="Validation" />}
+          {can('manageUsers') && <NavItem to="/users" icon={<UsersIcon />} label="Users" />}
+          {can('manageUsers') && <NavItem to="/roles" icon={<RolesIcon />} label="Roles" />}
+          <NavItem to="/profile" icon={<ProfileIcon />} label="Profile" />
         </nav>
       </aside>
       <div className="app-shell__main">

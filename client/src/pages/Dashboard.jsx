@@ -5,6 +5,7 @@ import { useAuth } from '../context/AuthContext';
 import { TASK_PHASES } from '../constants';
 import PhaseBarChart from '../components/PhaseBarChart';
 import Avatar from '../components/Avatar';
+import { DevelopmentsIcon, ListIcon, TasksIcon, ValidationIcon } from '../components/icons';
 
 function InfoDot({ text }) {
   return (
@@ -16,6 +17,26 @@ function InfoDot({ text }) {
         {text}
       </span>
     </span>
+  );
+}
+
+function StatCard({ icon, color, title, tooltip, value, to, linkLabel = 'View →' }) {
+  return (
+    <div className="card dashboard-card">
+      <div className="dashboard-card__icon-row">
+        <span className="dashboard-card__icon" style={{ background: color }}>
+          {icon}
+        </span>
+        <h3>
+          {title}
+          {tooltip && <InfoDot text={tooltip} />}
+        </h3>
+      </div>
+      <div className="stat-number">{value}</div>
+      <Link className="muted-link" to={to}>
+        {linkLabel}
+      </Link>
+    </div>
   );
 }
 
@@ -55,53 +76,45 @@ export default function Dashboard() {
 
       <div className="dashboard-grid">
         <div className="dashboard-row dashboard-row--stats">
-          <div className="card dashboard-card">
-            <h3>
-              My pending tasks
-              <InfoDot text="Tasks assigned to you that aren't Done yet." />
-            </h3>
-            <div className="stat-number">{data.myPendingTasks}</div>
-            <Link className="muted-link" to="/my-tasks">
-              View →
-            </Link>
-          </div>
+          <StatCard
+            icon={<TasksIcon />}
+            color="var(--color-primary)"
+            title="My pending tasks"
+            tooltip="Tasks assigned to you that aren't Done yet."
+            value={data.myPendingTasks}
+            to="/my-tasks"
+          />
 
           {can('validateTasks') && data.pendingValidationCount !== null && (
-            <div className="card dashboard-card">
-              <h3>
-                Tasks to validate
-                <InfoDot text="Tasks currently In Validation, waiting for you to approve or reject them." />
-              </h3>
-              <div className="stat-number">{data.pendingValidationCount}</div>
-              <Link className="muted-link" to="/validation">
-                View →
-              </Link>
-            </div>
+            <StatCard
+              icon={<ValidationIcon />}
+              color="#c2760a"
+              title="Tasks to validate"
+              tooltip="Tasks currently In Validation, waiting for you to approve or reject them."
+              value={data.pendingValidationCount}
+              to="/validation"
+            />
           )}
 
           {data.overview && (
             <>
-              <div className="card dashboard-card">
-                <h3>
-                  Awaiting response
-                  <InfoDot text="Developments in Waiting List or In Search." />
-                </h3>
-                <div className="stat-number">{data.overview.developmentsAwaitingResponse}</div>
-                <Link className="muted-link" to="/developments">
-                  View →
-                </Link>
-              </div>
+              <StatCard
+                icon={<DevelopmentsIcon />}
+                color="#1a3fb0"
+                title="Awaiting response"
+                tooltip="Developments in Waiting List or In Search."
+                value={data.overview.developmentsAwaitingResponse}
+                to="/developments"
+              />
 
-              <div className="card dashboard-card">
-                <h3>
-                  In progress, pending
-                  <InfoDot text="Developments In Development / In Production that still have tasks not yet Done." />
-                </h3>
-                <div className="stat-number">{data.overview.developmentsInProgressPending}</div>
-                <Link className="muted-link" to="/developments">
-                  View →
-                </Link>
-              </div>
+              <StatCard
+                icon={<ListIcon />}
+                color="#12703f"
+                title="In progress, pending"
+                tooltip="Developments In Development / In Production that still have tasks not yet Done."
+                value={data.overview.developmentsInProgressPending}
+                to="/developments"
+              />
             </>
           )}
         </div>
