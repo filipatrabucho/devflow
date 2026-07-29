@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import pool from '../db.js';
 import { requireAuth } from '../middleware/auth.js';
+import { getPermissionsFor } from '../permissions.js';
 import { TASK_PHASES } from '../utils/validators.js';
 
 const router = Router();
@@ -23,6 +24,14 @@ router.get('/', requireAuth, async (req, res) => {
     (sum, [phase, count]) => (phase === 'done' ? sum : sum + count),
     0
   );
+
+  const permissions = await getPermissionsFor(req.user.role);
+
+  let pendingValidationCount = null;
+  if (permissions.validateTasks) {
+    const [[{ count }]] = await pool.query("SELECT COUNT(*) AS count FROM tasks WHERE phase = 'in_validation'");
+    pendingValidationCount = Number(count);
+  }
 
   const isTopLevel = req.user.role === 'admin' || req.user.role === 'senior';
   let overview = null;
@@ -59,6 +68,7 @@ router.get('/', requireAuth, async (req, res) => {
   res.json({
     myTasksByPhase,
     myPendingTasks,
+    pendingValidationCount,
     overview,
   });
 });

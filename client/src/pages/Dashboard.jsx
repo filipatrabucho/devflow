@@ -8,14 +8,19 @@ import Avatar from '../components/Avatar';
 
 function InfoDot({ text }) {
   return (
-    <span className="info-dot" title={text} aria-label={text}>
-      i
+    <span className="info-tooltip" tabIndex={0}>
+      <span className="info-dot" aria-label={text}>
+        i
+      </span>
+      <span className="info-tooltip__bubble" role="tooltip">
+        {text}
+      </span>
     </span>
   );
 }
 
 export default function Dashboard() {
-  const { user } = useAuth();
+  const { user, can } = useAuth();
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -60,6 +65,19 @@ export default function Dashboard() {
               View →
             </Link>
           </div>
+
+          {can('validateTasks') && data.pendingValidationCount !== null && (
+            <div className="card dashboard-card">
+              <h3>
+                Tasks to validate
+                <InfoDot text="Tasks currently In Validation, waiting for you to approve or reject them." />
+              </h3>
+              <div className="stat-number">{data.pendingValidationCount}</div>
+              <Link className="muted-link" to="/validation">
+                View →
+              </Link>
+            </div>
+          )}
 
           {data.overview && (
             <>
