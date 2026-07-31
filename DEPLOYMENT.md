@@ -130,6 +130,15 @@ domain**, point their DNS at Netlify per the instructions shown there, then:
   **Site URL** and add the domain to **Redirect URLs**, same as described in
   step 5/troubleshooting for the primary instance.
 
+## Microsoft Teams integration (optional)
+
+No env vars or redeploy needed — an Admin can turn this on entirely from the
+app: **Integrations** in the sidebar (admin only) → paste a Teams channel's
+**Incoming Webhook** URL (channel → Connectors/Workflows → "Incoming
+Webhook") → Save. From then on, new developments, new tasks, and development
+or task phase changes get posted into that channel. Leave the URL empty to
+turn it off again — nothing else in the app depends on it.
+
 ## Notes / things worth knowing
 
 - Login and sessions are handled entirely by Supabase Auth in the browser; our

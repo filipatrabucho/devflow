@@ -360,6 +360,11 @@ select:focus {
   cursor: not-allowed;
 }
 
+.btn:focus-visible {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 2px;
+}
+
 .btn--primary {
   background: var(--color-primary);
   color: #fff;
@@ -892,39 +897,61 @@ select:focus {
   color: #fff;
 }
 
-/* Kanban board */
+/* Kanban board — Trello-style: a tinted board surface holding light-gray
+   list columns, each with white cards and a colored accent per lane. */
 .kanban {
   display: grid;
-  grid-template-columns: repeat(5, minmax(220px, 260px));
+  grid-template-columns: repeat(5, minmax(230px, 270px));
   justify-content: start;
   gap: 14px;
   overflow-x: auto;
-  padding-bottom: 8px;
+  padding: 16px;
+  border-radius: 14px;
+  background: linear-gradient(160deg, var(--color-primary) 0%, var(--color-primary-hover) 100%);
 }
 
 .kanban__column {
-  background: #eef0f4;
+  background: #f1f2f5;
   border-radius: 10px;
   padding: 10px;
-  min-width: 220px;
+  min-width: 230px;
   min-height: 120px;
   border: 2px solid transparent;
+  border-top: 4px solid var(--kanban-accent, var(--color-primary));
   transition: border-color 0.12s ease, background 0.12s ease;
 }
 .kanban__column--over {
   border-color: var(--color-primary);
-  background: #ece3f7;
+  background: #e7e9ee;
+}
+
+/* Phase accent colors, in column order — decorative only (the column header
+   text label is always the real indicator, so this stays accessible even
+   for color-blind users or if a client's white-label palette clashes). */
+.kanban__column:nth-child(1) {
+  --kanban-accent: #6b7280;
+}
+.kanban__column:nth-child(2) {
+  --kanban-accent: #b06a00;
+}
+.kanban__column:nth-child(3) {
+  --kanban-accent: #1a3fb0;
+}
+.kanban__column:nth-child(4) {
+  --kanban-accent: #12703f;
+}
+.kanban__column:nth-child(5) {
+  --kanban-accent: #0d5230;
 }
 
 .kanban__column-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  font-size: 0.78rem;
+  font-size: 0.8rem;
   font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.03em;
-  color: var(--color-muted);
+  letter-spacing: 0.01em;
+  color: var(--color-text);
   padding: 4px 6px 10px;
 }
 
@@ -933,6 +960,7 @@ select:focus {
   border-radius: 999px;
   padding: 1px 8px;
   font-weight: 700;
+  color: var(--color-muted);
 }
 
 .kanban__column-body {
@@ -954,6 +982,7 @@ select:focus {
   border-radius: 8px;
   padding: 10px 12px;
   box-shadow: var(--shadow-sm);
+  transition: box-shadow 0.12s ease, transform 0.12s ease;
 }
 .kanban__card--draggable {
   cursor: grab;
@@ -962,8 +991,11 @@ select:focus {
   cursor: grabbing;
 }
 
-.kanban__card--clickable:hover {
+.kanban__card--clickable:hover,
+.kanban__card--draggable:hover {
   border-color: var(--color-primary);
+  box-shadow: var(--shadow-md);
+  transform: translateY(-1px);
 }
 
 .kanban__card-title {
@@ -980,10 +1012,17 @@ select:focus {
   margin-top: 8px;
 }
 
+/* Styled like a Trello label chip — a colored pill instead of plain text,
+   so a card's development is scannable by color at a glance. */
 .kanban__card-dev {
-  font-size: 0.78rem;
-  color: var(--color-muted);
-  margin-bottom: 4px;
+  display: inline-block;
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: var(--color-primary-hover);
+  background: color-mix(in srgb, var(--color-primary-light) 25%, transparent);
+  border-radius: 4px;
+  padding: 2px 8px;
+  margin-bottom: 6px;
 }
 
 /* Table */
@@ -1179,7 +1218,11 @@ select:focus {
 .info-tooltip {
   position: relative;
   display: inline-flex;
-  outline: none;
+}
+.info-tooltip:focus-visible {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 2px;
+  border-radius: 50%;
 }
 
 .info-dot {

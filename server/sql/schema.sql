@@ -132,6 +132,34 @@ CREATE TABLE IF NOT EXISTS branding_settings (
 
 INSERT INTO branding_settings (id) VALUES (1) ON CONFLICT (id) DO NOTHING;
 
+-- Single-row table (id is always 1) holding this instance's Stripe
+-- subscription state, kept in sync by the /api/billing/webhook handler.
+-- Entirely optional — an instance with BILLING_ENABLED unset (the default,
+-- including PKF's own instance) never reads or writes this table at all.
+CREATE TABLE IF NOT EXISTS billing_status (
+  id                     SMALLINT PRIMARY KEY DEFAULT 1 CHECK (id = 1),
+  stripe_customer_id     TEXT NULL,
+  stripe_subscription_id TEXT NULL,
+  plan                   VARCHAR(60) NULL,
+  status                 VARCHAR(30) NOT NULL DEFAULT 'inactive'
+                           CHECK (status IN ('inactive', 'trialing', 'active', 'past_due', 'canceled', 'unpaid')),
+  current_period_end     TIMESTAMPTZ NULL,
+  updated_at             TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+-- Single-row table (id is always 1) holding this instance's outbound
+-- integrations — currently just a Microsoft Teams Incoming Webhook URL, so
+-- development/task activity can be posted into a Teams channel. Admin-only,
+-- optional: if teams_webhook_url is null, notifications are silently skipped.
+CREATE TABLE IF NOT EXISTS integration_settings (
+  id                SMALLINT PRIMARY KEY DEFAULT 1 CHECK (id = 1),
+  teams_webhook_url TEXT NULL,
+  updated_at        TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+INSERT INTO billing_status (id) VALUES (1) ON CONFLICT (id) DO NOTHING;
+INSERT INTO integration_settings (id) VALUES (1) ON CONFLICT (id) DO NOTHING;
+
 -- `updated_at` auto-touch, since Postgres has no `ON UPDATE CURRENT_TIMESTAMP`.
 CREATE OR REPLACE FUNCTION set_updated_at()
 RETURNS TRIGGER AS $$
@@ -155,6 +183,14 @@ CREATE TRIGGER trg_developments_updated_at BEFORE UPDATE ON developments
 
 DROP TRIGGER IF EXISTS trg_branding_settings_updated_at ON branding_settings;
 CREATE TRIGGER trg_branding_settings_updated_at BEFORE UPDATE ON branding_settings
+  FOR EACH ROW EXECUTE FUNCTION set_updated_at();
+
+DROP TRIGGER IF EXISTS trg_billing_status_updated_at ON billing_status;
+CREATE TRIGGER trg_billing_status_updated_at BEFORE UPDATE ON billing_status
+  FOR EACH ROW EXECUTE FUNCTION set_updated_at();
+
+DROP TRIGGER IF EXISTS trg_integration_settings_updated_at ON integration_settings;
+CREATE TRIGGER trg_integration_settings_updated_at BEFORE UPDATE ON integration_settings
   FOR EACH ROW EXECUTE FUNCTION set_updated_at();
 
 DROP TRIGGER IF EXISTS trg_tasks_updated_at ON tasks;

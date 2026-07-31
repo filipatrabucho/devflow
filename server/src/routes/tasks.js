@@ -4,11 +4,20 @@ import { requireAuth } from '../middleware/auth.js';
 import { requirePermission, getPermissionsFor } from '../permissions.js';
 import { TASK_FIELDS, TASK_JOINS } from './developments.js';
 import { TASK_PHASES } from '../utils/validators.js';
+import { notifyTeams } from '../utils/teamsNotify.js';
 
 const router = Router();
 
 const DEVELOPER_ALLOWED_PHASES = new Set(['not_started', 'in_progress', 'in_validation']);
 const VALIDATED_PHASES = new Set(['approved', 'done']);
+
+const TASK_PHASE_LABELS = {
+  not_started: 'Not Started',
+  in_progress: 'In Progress',
+  in_validation: 'In Validation',
+  approved: 'Approved',
+  done: 'Done',
+};
 
 const COMMENT_FIELDS = `
   c.id, c.task_id AS "taskId", c.body, c.is_system AS "isSystem", c.event_type AS "eventType",
@@ -191,6 +200,15 @@ router.put('/:id', requireAuth, async (req, res) => {
     `SELECT ${TASK_FIELDS} FROM tasks t ${TASK_JOINS} WHERE t.id = ?`,
     [id]
   );
+
+  if (phaseChanged) {
+    const [devRows] = await pool.execute('SELECT name FROM developments WHERE id = ?', [task.development_id]);
+    await notifyTeams(
+      'Task phase changed',
+      `**${updatedRows[0].title}**\n\nDevelopment: ${devRows[0]?.name || 'Unknown'}\n\n${TASK_PHASE_LABELS[task.phase] || task.phase} → ${TASK_PHASE_LABELS[nextPhase] || nextPhase}`
+    );
+  }
+
   res.json({ task: updatedRows[0] });
 });
 

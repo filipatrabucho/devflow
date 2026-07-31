@@ -11,6 +11,7 @@ import taskRoutes from './routes/tasks.js';
 import roleRoutes from './routes/roles.js';
 import dashboardRoutes from './routes/dashboard.js';
 import brandingRoutes from './routes/branding.js';
+import integrationRoutes from './routes/integrations.js';
 
 export function createApp() {
   const app = express();
@@ -60,6 +61,7 @@ export function createApp() {
   app.use('/api/roles', roleRoutes);
   app.use('/api/dashboard', dashboardRoutes);
   app.use('/api/branding', brandingRoutes);
+  app.use('/api/integrations', integrationRoutes);
 
   app.get('/api/health', (_req, res) => res.json({ status: 'ok' }));
 

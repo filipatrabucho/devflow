@@ -10,6 +10,7 @@ import {
   DashboardIcon,
   DevelopmentsIcon,
   HamburgerIcon,
+  IntegrationsIcon,
   ListIcon,
   ProfileIcon,
   RolesIcon,
@@ -79,6 +80,9 @@ export default function Layout() {
           {can('manageUsers') && <NavItem to="/users" icon={<UsersIcon />} label="Users" />}
           {can('manageUsers') && <NavItem to="/roles" icon={<RolesIcon />} label="Roles" />}
           {user?.role === 'admin' && <NavItem to="/branding" icon={<BrandingIcon />} label="Branding" />}
+          {user?.role === 'admin' && (
+            <NavItem to="/integrations" icon={<IntegrationsIcon />} label="Integrations" />
+          )}
           <NavItem to="/profile" icon={<ProfileIcon />} label="Profile" />
         </nav>
       </aside>

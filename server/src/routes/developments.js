@@ -6,6 +6,7 @@ import { requirePermission } from '../permissions.js';
 import { uploadSpreadsheet } from '../middleware/upload.js';
 import { DEVELOPMENT_PHASES, isValidDateString } from '../utils/validators.js';
 import { findHeaderRow, mapPhase, cellText, parseFlexibleDate, MAX_HEADER_SCAN_ROWS } from '../utils/excelImport.js';
+import { notifyTeams } from '../utils/teamsNotify.js';
 
 const router = Router();
 
@@ -135,6 +136,12 @@ router.post('/', requireAuth, requirePermission('manageDevelopments'), async (re
     `SELECT ${DEV_FIELDS} FROM developments d LEFT JOIN profiles u ON u.id = d.created_by WHERE d.id = ?`,
     [result.insertId]
   );
+
+  await notifyTeams(
+    'New development created',
+    `**${rows[0].name}**\n\nCreated by ${req.user.name}.`
+  );
+
   res.status(201).json({ development: rows[0] });
 });
 
@@ -315,6 +322,14 @@ router.put('/:id', requireAuth, requirePermission('manageDevelopments'), async (
     `SELECT ${DEV_FIELDS} FROM developments d LEFT JOIN profiles u ON u.id = d.created_by WHERE d.id = ?`,
     [id]
   );
+
+  if (phase !== undefined && phase !== existing.phase) {
+    await notifyTeams(
+      'Development phase changed',
+      `**${rows[0].name}**\n\n${PHASE_LABELS[existing.phase] || existing.phase} → ${PHASE_LABELS[phase] || phase}`
+    );
+  }
+
   res.json({ development: rows[0] });
 });
 
@@ -350,7 +365,7 @@ router.post('/:id/tasks', requireAuth, requirePermission('manageTasks'), async (
     return res.status(400).json({ error: 'Title must be between 2 and 200 characters' });
   }
 
-  const [devRows] = await pool.execute('SELECT id FROM developments WHERE id = ?', [developmentId]);
+  const [devRows] = await pool.execute('SELECT id, name FROM developments WHERE id = ?', [developmentId]);
   if (!devRows[0]) return res.status(404).json({ error: 'Development not found' });
 
   let assigneeId = null;
@@ -369,6 +384,12 @@ router.post('/:id/tasks', requireAuth, requirePermission('manageTasks'), async (
     `SELECT ${TASK_FIELDS} FROM tasks t ${TASK_JOINS} WHERE t.id = ?`,
     [result.insertId]
   );
+
+  await notifyTeams(
+    'New task created',
+    `**${rows[0].title}**\n\nDevelopment: ${devRows[0].name}${rows[0].assignedToName ? `\n\nAssigned to ${rows[0].assignedToName}` : ''}`
+  );
+
   res.status(201).json({ task: rows[0] });
 });
 

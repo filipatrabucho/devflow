@@ -13,6 +13,7 @@ import Users from './pages/Users';
 import Roles from './pages/Roles';
 import Profile from './pages/Profile';
 import BrandingSettings from './pages/BrandingSettings';
+import Integrations from './pages/Integrations';
 
 export default function App() {
   return (
@@ -43,6 +44,7 @@ export default function App() {
 
             <Route element={<ProtectedRoute role="admin" />}>
               <Route path="/branding" element={<BrandingSettings />} />
+              <Route path="/integrations" element={<Integrations />} />
             </Route>
           </Route>
         </Route>
